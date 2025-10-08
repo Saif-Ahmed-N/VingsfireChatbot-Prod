@@ -1,38 +1,21 @@
-<<<<<<< HEAD
-# Core Frameworks
+# Core Web Framework and Production Server
 fastapi
 uvicorn
-gunicorn  # Recommended for production server stability
-pandas    # Used in excel_handler.py
+gunicorn
 
-# LLM and Email
-groq      # Used in llm_handler.py
-python-dotenv  # Used to load .env file
-python-multipart  # For handling form data (good practice with FastAPI)
-email-validator  # Used in main.py for email validation
-phonenumbers  # Used in main.py for phone validation
-smtplib # Base library for emailing (though usually included with python)
+# Data Handling and Utilities
+pandas
+openpyxl  # Required for pandas to read/write .xlsx files
+python-dotenv
 
-# PDF Generation and Utilities
-fpdf2  # Used in pdf_writer.py (fpdf is often fpdf2 now)
-certifi  # Used in mongo_handler.py for secure MongoDB connections
-=======
-# Core Frameworks
-fastapi
-uvicorn
-gunicorn  # Recommended for production server stability
-pandas    # Used in excel_handler.py
+# LLM and AI Integration
+groq
 
-# LLM and Email
-groq      # Used in llm_handler.py
-python-dotenv  # Used to load .env file
-python-multipart  # For handling form data (good practice with FastAPI)
-email-validator  # Used in main.py for email validation
-phonenumbers  # Used in main.py for phone validation
-smtplib # Base library for emailing (though usually included with python)
+# Database (MongoDB)
+pymongo
+certifi
 
-# PDF Generation and Utilities
-fpdf2  # Used in pdf_writer.py (fpdf is often fpdf2 now)
-certifi  # Used in mongo_handler.py for secure MongoDB connections
->>>>>>> 4202b114e3a9b462be33ae8c29efd71faf17ae98
-pymongo  # Used in mongo_handler.py for MongoDB access
+# Validation and Utility
+phonenumbers
+email-validator
+fpdf2  # The correct library for PDF generation (fpdf)
