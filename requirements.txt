@@ -1,0 +1,38 @@
+<<<<<<< HEAD
+# Core Frameworks
+fastapi
+uvicorn
+gunicorn  # Recommended for production server stability
+pandas    # Used in excel_handler.py
+
+# LLM and Email
+groq      # Used in llm_handler.py
+python-dotenv  # Used to load .env file
+python-multipart  # For handling form data (good practice with FastAPI)
+email-validator  # Used in main.py for email validation
+phonenumbers  # Used in main.py for phone validation
+smtplib # Base library for emailing (though usually included with python)
+
+# PDF Generation and Utilities
+fpdf2  # Used in pdf_writer.py (fpdf is often fpdf2 now)
+certifi  # Used in mongo_handler.py for secure MongoDB connections
+=======
+# Core Frameworks
+fastapi
+uvicorn
+gunicorn  # Recommended for production server stability
+pandas    # Used in excel_handler.py
+
+# LLM and Email
+groq      # Used in llm_handler.py
+python-dotenv  # Used to load .env file
+python-multipart  # For handling form data (good practice with FastAPI)
+email-validator  # Used in main.py for email validation
+phonenumbers  # Used in main.py for phone validation
+smtplib # Base library for emailing (though usually included with python)
+
+# PDF Generation and Utilities
+fpdf2  # Used in pdf_writer.py (fpdf is often fpdf2 now)
+certifi  # Used in mongo_handler.py for secure MongoDB connections
+>>>>>>> 4202b114e3a9b462be33ae8c29efd71faf17ae98
+pymongo  # Used in mongo_handler.py for MongoDB access
