@@ -1,5 +1,6 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles # ADDED: Necessary for serving frontend files
 from pydantic import BaseModel
 from typing import Dict, Any, List
 
@@ -22,16 +23,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# --- START OF CORS CONFIGURATION ---
 app.add_middleware(
     CORSMiddleware,
-    # REMEMBER TO CHANGE THIS FOR PRODUCTION!
-    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"], 
+    # REMEMBER TO CHANGE THIS FOR PRODUCTION! (Use your production domain, e.g., https://www.your-site.com)
+    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500","https://vingsfire-final-widget.vercel.app/"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# --- END OF CORS CONFIGURATION ---
 
 # Load data at startup
 services_data, main_services, sub_categories_others, app_sub_category_definitions = load_service_data()
@@ -408,3 +407,8 @@ async def create_proposal(request: ProposalRequest, background_tasks: Background
         request.custom_category_data
     )
     return {"message": "Proposal generation has been accepted and is being processed."}
+
+# --- STATIC FILE CONFIGURATION ---
+# This serves index.html and all assets (tailwind.css, images/)
+# It mounts the current directory (.) and ensures index.html is served as the root page.
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
