@@ -6,9 +6,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const goBackContainer = document.getElementById('go-back-container');
     const chatWidget = document.getElementById('chat-widget');
 
+    // FIX: This line makes the chatbot interface visible when the page loads.
     chatWidget.classList.add('visible');
 
-    // FIX: Moved this function definition before it is used below
     const handleGoBack = () => {
         userInput.disabled = true;
         const existingUi = document.getElementById('dynamic-ui-container');
