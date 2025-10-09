@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
-import sys#Import added for forceful logging
+import sys# Import added for forceful logging
 
 from excel_handler import load_service_data
 from country_data import countries
@@ -18,7 +18,7 @@ from mongo_handler import save_lead, update_lead_details
 from utils import send_email_with_attachment
 
 app = FastAPI(
-    title="Vingsfire AI Proposal API",
+    title="Infinite Tech AI Proposal API",
     description="API for the Vingsfire chatbot to handle conversations and generate proposals.",
     version="1.0.0"
 )
@@ -120,7 +120,7 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
     if previous_stage == "get_name":
         user_details.pop('name', None)
-        return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Vingsfire AI assistant. To get started, please tell me your full name.", user_details=user_details)
+        return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)
     elif previous_stage == "initial_choice":
         return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_details.get('name', 'there')}! How can I help you today?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
     elif previous_stage == "get_email":
