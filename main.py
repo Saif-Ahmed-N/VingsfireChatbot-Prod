@@ -120,7 +120,7 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
     if previous_stage == "get_name":
         user_details.pop('name', None)
-        return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)
+        return ChatResponse(next_stage="get_name", bot_message="Hello! I am the InfiniteTech AI assistant. To get started, please tell me your full name.", user_details=user_details)
     elif previous_stage == "initial_choice":
         return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_details.get('name', 'there')}! How can I help you today?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
     elif previous_stage == "get_email":
