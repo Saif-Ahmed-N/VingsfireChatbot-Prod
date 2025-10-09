@@ -26,7 +26,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     # REMEMBER TO CHANGE THIS FOR PRODUCTION! (Use your production domain, e.g., https://www.your-site.com)
-    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500","https://vingsfire-final-widget.vercel.app/","https://vingsfire-chatbot-frontend.onrender.com","https://vingsfire-chatbot.netlify.app/","https://infinitecard.in/"], 
+    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500",
+                   "https://vingsfire-chatbot.netlify.app","https://infinitecard.in"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
