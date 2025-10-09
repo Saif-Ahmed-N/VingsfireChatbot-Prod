@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vingsfire AI Assistant - Proposal Generator</title>
     <link href="./tailwind.css" rel="stylesheet">
@@ -59,7 +60,7 @@
         <div id="chat-messages" class="flex-1 p-5 overflow-y-auto chat-container"></div>
         
         <div id="go-back-container" class="px-5 transition-opacity">
-            <button id="go-back-button" class="hidden text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors" onclick="handleGoBack()">
+            <button id="go-back-button" class="hidden text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 Go Back
             </button>
@@ -85,8 +86,12 @@
             const goBackButton = document.getElementById('go-back-button');
             const goBackContainer = document.getElementById('go-back-container');
             const chatWidget = document.getElementById('chat-widget');
+            
+            // FIX: Added event listener to the "Go Back" button
+            goBackButton.addEventListener('click', handleGoBack);
 
-            const API_URL = 'https://vingsfirechatbot-api.onrender.com'; // *** CONFIRM THIS IS YOUR LIVE RENDER URL ***
+            // IMPORTANT: Make sure this URL points to your LIVE RENDER URL for production
+            const API_URL = 'https://vingsfirechatbot-api.onrender.com';
             const BACK_COMMAND = '__GO_BACK__'; 
 
             let chatState = {
@@ -415,9 +420,9 @@
                             custom_category_data: chatState.custom_category_data
                         })
                     });
-                } catch (error) {
-                    console.error("Error triggering proposal generation:", error);
-                }
+                 } catch (error) {
+                     console.error("Error triggering proposal generation:", error);
+                 }
             };
 
             chatForm.addEventListener('submit', (e) => {
