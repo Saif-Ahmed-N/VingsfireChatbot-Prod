@@ -6,7 +6,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const goBackContainer = document.getElementById('go-back-container');
     const chatWidget = document.getElementById('chat-widget');
 
-    // FIX: This line makes the chatbot interface visible when the page loads.
+    // This line makes the chatbot interface visible when the page loads.
     chatWidget.classList.add('visible');
 
     const handleGoBack = () => {
