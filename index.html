@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vingsfire AI Assistant - Proposal Generator</title>
     <link href="./tailwind.css" rel="stylesheet">
@@ -19,7 +19,7 @@
 
         /* Go Back Button Visibility */
         #go-back-container {
-            min-height: 48px; 
+            min-height: 48px;
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
             padding-top: 0.5rem;
@@ -32,7 +32,7 @@
         #chat-widget {
             visibility: hidden;
             opacity: 0;
-            transition: opacity 0.3s ease-in-out; 
+            transition: opacity 0.3s ease-in-out;
             height: 600px;
             width: 400px;
         }
@@ -87,10 +87,8 @@
             const goBackContainer = document.getElementById('go-back-container');
             const chatWidget = document.getElementById('chat-widget');
             
-            // FIX: Added event listener to the "Go Back" button
             goBackButton.addEventListener('click', handleGoBack);
 
-            // IMPORTANT: Make sure this URL points to your LIVE RENDER URL for production
             const API_URL = 'https://vingsfirechatbot-api.onrender.com';
             const BACK_COMMAND = '__GO_BACK__'; 
 
