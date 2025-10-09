@@ -1,4 +1,3 @@
-// All of your JavaScript code now lives in this external file.
 window.addEventListener('DOMContentLoaded', (event) => {
     const chatMessages = document.getElementById('chat-messages');
     const chatForm = document.getElementById('chat-form');
@@ -6,6 +5,14 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const goBackButton = document.getElementById('go-back-button');
     const goBackContainer = document.getElementById('go-back-container');
     const chatWidget = document.getElementById('chat-widget');
+
+    // FIX: Moved this function definition before it is used below
+    const handleGoBack = () => {
+        userInput.disabled = true;
+        const existingUi = document.getElementById('dynamic-ui-container');
+        if (existingUi) existingUi.remove();
+        handleUserMessage(BACK_COMMAND, 'command');
+    };
 
     goBackButton.addEventListener('click', handleGoBack);
 
@@ -29,13 +36,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
             goBackButton.classList.add('hidden');
             goBackContainer.classList.remove('visible');
         }
-    };
-
-    const handleGoBack = () => {
-        userInput.disabled = true;
-        const existingUi = document.getElementById('dynamic-ui-container');
-        if (existingUi) existingUi.remove();
-        handleUserMessage(BACK_COMMAND, 'command');
     };
 
     const appendMessage = (role, content) => {
