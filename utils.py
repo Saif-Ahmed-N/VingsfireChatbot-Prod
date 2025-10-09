@@ -1,33 +1,39 @@
 import os
-import smtplib
-import ssl
-from email.message import EmailMessage
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition)
+import base64
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def send_email_with_attachment(receiver_email, subject, body, attachment_path):
-    smtp_server = os.getenv("EMAIL_HOST")
-    smtp_port = int(os.getenv("EMAIL_PORT"))
     sender_email = os.getenv("EMAIL_ADDRESS")
-    sender_password = os.getenv("EMAIL_PASSWORD")
+    api_key = os.getenv("SENDGRID_API_KEY")
 
-    if not all([smtp_server, smtp_port, sender_email, sender_password]):
-        raise ValueError("Email credentials are not fully configured in the .env file.")
+    if not all([sender_email, api_key]):
+        raise ValueError("SendGrid credentials are not fully configured.")
 
-    msg = EmailMessage()
-    msg["From"] = sender_email
-    msg["To"] = receiver_email
-    msg["Subject"] = subject
-    msg.set_content(body)
+    message = Mail(
+        from_email=sender_email,
+        to_emails=receiver_email,
+        subject=subject,
+        html_content=body.replace('\n', '<br>'))
 
-    with open(attachment_path, "rb") as f:
-        file_data = f.read()
-        file_name = os.path.basename(attachment_path)
+    with open(attachment_path, 'rb') as f:
+        data = f.read()
+    encoded_file = base64.b64encode(data).decode()
 
-    msg.add_attachment(file_data, maintype="application", subtype="pdf", filename=file_name)
+    attachedFile = Attachment(
+        FileContent(encoded_file),
+        FileName(os.path.basename(attachment_path)),
+        FileType('application/pdf'),
+        Disposition('attachment')
+    )
+    message.attachment = attachedFile
 
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context) as server:
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
+    try:
+        sg = SendGridAPIClient(api_key)
+        response = sg.send(message)
+        print(f"SendGrid response status code: {response.status_code}")
+    except Exception as e:
+        print(f"Error sending email with SendGrid: {e}")

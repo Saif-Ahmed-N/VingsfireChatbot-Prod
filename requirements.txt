@@ -19,3 +19,4 @@ certifi
 phonenumbers
 email-validator
 fpdf2  # The correct library for PDF generation (fpdf)
+sendgrid
