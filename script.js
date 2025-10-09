@@ -35,7 +35,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         stage: 'get_name',
         user_details: { stage_history: [] },
         custom_category_data: null,
-        messages: [{ role: 'assistant', content: 'Hello! I am the Vingsfire AI assistant. To get started, please tell me your full name.' }]
+        messages: [{ role: 'assistant', content: 'Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.' }]
     };
 
     let lastMessageElement = null;
