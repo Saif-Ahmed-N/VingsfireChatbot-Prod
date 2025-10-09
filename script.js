@@ -5,18 +5,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const goBackButton = document.getElementById('go-back-button');
     const goBackContainer = document.getElementById('go-back-container');
     const chatWidget = document.getElementById('chat-widget');
-
-    // This line makes the chatbot interface visible when the page loads.
-    chatWidget.classList.add('visible');
-
-    const handleGoBack = () => {
-        userInput.disabled = true;
-        const existingUi = document.getElementById('dynamic-ui-container');
-        if (existingUi) existingUi.remove();
-        handleUserMessage(BACK_COMMAND, 'command');
-    };
-
-    goBackButton.addEventListener('click', handleGoBack);
+    const closeChatbotBtn = document.getElementById('close-chatbot-btn'); // New element
 
     const API_URL = 'https://vingsfirechatbot-api.onrender.com';
     const BACK_COMMAND = '__GO_BACK__';
@@ -29,6 +18,41 @@ window.addEventListener('DOMContentLoaded', (event) => {
     };
 
     let lastMessageElement = null;
+
+    // --- NEW FUNCTIONS FOR CLOSE & RESET ---
+    const resetChat = () => {
+        chatState = {
+            stage: 'get_name',
+            user_details: { stage_history: [] },
+            custom_category_data: null,
+            messages: [{ role: 'assistant', content: 'Hello! I am the Vingsfire AI assistant. To get started, please tell me your full name.' }]
+        };
+        renderChat();
+    };
+
+    const handleClose = () => {
+        resetChat();
+        // Send a message to the parent window (WordPress) to close the iframe
+        if (window.parent) {
+            window.parent.postMessage('CLOSE_WIDGET', '*');
+        }
+    };
+    
+    const handleGoBack = () => {
+        userInput.disabled = true;
+        const existingUi = document.getElementById('dynamic-ui-container');
+        if (existingUi) existingUi.remove();
+        handleUserMessage(BACK_COMMAND, 'command');
+    };
+
+    // --- EVENT LISTENERS ---
+    goBackButton.addEventListener('click', handleGoBack);
+    closeChatbotBtn.addEventListener('click', handleClose); // New listener
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleUserMessage(userInput.value);
+        userInput.value = '';
+    });
 
     const updateGoBackButton = () => {
         if (chatState.user_details.stage_history && chatState.user_details.stage_history.length > 0) {
@@ -321,12 +345,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
             console.error("Error triggering proposal generation:", error);
         }
     };
-
-    chatForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        handleUserMessage(userInput.value);
-        userInput.value = '';
-    });
 
     renderChat();
 
