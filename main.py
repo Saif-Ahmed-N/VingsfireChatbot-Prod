@@ -1,13 +1,13 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import os
 from datetime import datetime
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
+import sys  # Import added for forceful logging
 
 from excel_handler import load_service_data
 from country_data import countries
@@ -17,23 +17,28 @@ from pdf_writer import create_proposal_pdf
 from mongo_handler import save_lead, update_lead_details
 from utils import send_email_with_attachment
 
-app = FastAPI()
+app = FastAPI(
+    title="Vingsfire AI Proposal API",
+    description="API for the Vingsfire chatbot to handle conversations and generate proposals.",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://vingsfire-chatbot.netlify.app",
-        "http://127.0.0.1:5500",
-        "http://localhost:5500"
+        "https://vingsfire-chatbot.netlify.app", # Your production frontend
+        "http://127.0.0.1:5500", # Local testing
+        "http://localhost:5500"  # Local testing
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Load data at startup
 services_data, main_services, sub_categories_others, app_sub_category_definitions = load_service_data()
 if not services_data:
-    raise RuntimeError("FATAL: Could not load service data.")
+    raise RuntimeError("FATAL: Could not load service data. Check your Excel file(s).")
 
 BACK_COMMAND = "__GO_BACK__"
 
@@ -68,10 +73,9 @@ def generate_local_budget_options(country_info):
             options.append(f"{symbol}{low_local:,.0f}+")
     return options
 
-# --- UPDATED FUNCTION WITH DETAILED LOGGING ---
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
     try:
-        print("--- BACKGROUND TASK STARTED ---") # ADDED
+        print("--- BACKGROUND TASK STARTED ---"); sys.stdout.flush()
         user_details['contact'] = user_details.get('phone', 'N/A')
         update_lead_details(user_details["email"], user_details)
 
@@ -85,9 +89,10 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
 
         country_info = countries[user_details['country']]
         
-        print("STEP 1: Preparing proposal data...") # ADDED
+        print("STEP 1: Preparing proposal data..."); sys.stdout.flush()
         proposal_costs = prepare_proposal_data(category_data, country_info, user_details['company_size'])
-        print("STEP 2: Generating descriptive text with AI...") # ADDED
+        
+        print("STEP 2: Generating descriptive text with AI..."); sys.stdout.flush()
         proposal_text = generate_descriptive_text(category_data, user_details.get('category'))
         if not proposal_text: raise ValueError("AI failed to generate text.")
         
@@ -97,23 +102,20 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d')}.pdf"
         output_path = os.path.join(output_dir, file_name)
         
-        print(f"STEP 3: Creating PDF at {output_path}...") # ADDED
+        print(f"STEP 3: Creating PDF at {output_path}..."); sys.stdout.flush()
         create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path)
         
-        print("STEP 4: Attempting to send email...") # ADDED
+        print("STEP 4: Attempting to send email..."); sys.stdout.flush()
         send_email_with_attachment(
             receiver_email=user_details['email'],
             subject=f"Your Personalized Proposal from Vingsfire for {user_details['category']}",
             body=f"Dear {user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Vingsfire Team",
             attachment_path=output_path
         )
-        print(f"--- BACKGROUND TASK SUCCEEDED: Successfully sent proposal to {user_details['email']} ---")
+        print(f"--- BACKGROUND TASK SUCCEEDED: Successfully sent proposal to {user_details['email']} ---"); sys.stdout.flush()
     except Exception as e:
-        print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---")
+        print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---"); sys.stdout.flush()
 
-# ... (the rest of your main.py code remains the same)
-# You can copy from here down if you prefer
-# -----------------------------------------------------------------
 
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
     if previous_stage == "get_name":
@@ -121,7 +123,6 @@ def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatR
         return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Vingsfire AI assistant. To get started, please tell me your full name.", user_details=user_details)
     elif previous_stage == "initial_choice":
         return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_details.get('name', 'there')}! How can I help you today?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
-    # ... (rest of the go_back function is unchanged)
     elif previous_stage == "get_email":
         user_details.pop('email', None)
         return ChatResponse(next_stage="get_email", bot_message="What is your email address?", user_details=user_details)
@@ -155,13 +156,14 @@ def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatR
         user_details.pop('category', None)
         user_details.pop('custom_category_name', None)
         main_service = user_details['main_service']
-        sub_cat = user_details['sub_category']
+        sub_cat = user_details.get('sub_category', '_default') # Use .get for safety
         if main_service == "App Development":
             options = app_sub_category_definitions.get(sub_cat, []) + ["Others"]
         else:
             options = list(services_data.get(main_service, {}).get(sub_cat, {}).keys()) + ["Others"]
         return ChatResponse(next_stage="get_specific_service", bot_message=f"Which specific type of {sub_cat} are you looking for?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": options})
     return ChatResponse(next_stage=previous_stage, bot_message="Cannot go back further than the start of the current flow.", user_details=user_details)
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def handle_chat(request: ChatRequest):
@@ -178,7 +180,7 @@ async def handle_chat(request: ChatRequest):
             return go_back_to_stage(previous_stage, user_details)
         else:
             return ChatResponse(next_stage=stage, bot_message="I can't go back any further in this session.", user_details=user_details)
-
+    
     if "new proposal" in user_input_lower and user_details.get('name'):
         user_details = {'name': user_details['name'], 'stage_history': []}
         return ChatResponse(
@@ -190,11 +192,10 @@ async def handle_chat(request: ChatRequest):
 
     if stage in ["general_chat", "final_generation"] and any(phrase in user_input_lower for phrase in ['connect me', 'connect', 'talk to someone', 'talk to a human']):
         return ChatResponse(next_stage='general_chat', bot_message="Of course. Our team is happy to help. You can reach them directly by sending an email to **sales@infinitecard.in**. They will get back to you shortly.", user_details=user_details)
-
+    
     if stage not in ['ended', 'general_chat', 'final_generation', 'get_name']:
         user_details['stage_history'].append(stage)
-    
-    # ... (rest of the /chat endpoint is unchanged)
+
     if stage == "get_name":
         user_details['name'] = user_input
         return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_input}! How can I help you today?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
@@ -312,7 +313,4 @@ async def create_proposal(request: ProposalRequest, background_tasks: Background
     )
     return {"message": "Proposal generation has been accepted and is being processed."}
 
-# This part is for your local Python server, it doesn't affect Render/Vercel
-# If you have a `frontend` folder with your static files, you can mount it
-# For this project, the frontend is separate, so this line might not be needed
-# app.mount("/", StaticFiles(directory=".", html=True), name="static")
+# The StaticFiles mount is not needed for a backend-only deployment and has been removed.
