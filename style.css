@@ -1,0 +1,43 @@
+/* All of your custom CSS now lives in this external file. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+.chat-container {
+    scroll-behavior: smooth;
+}
+
+.chat-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 3px;
+}
+
+#go-back-container {
+    min-height: 48px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    padding-top: 0.5rem;
+}
+
+#go-back-container.visible {
+    opacity: 1;
+}
+
+#chat-widget {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    height: 600px;
+    width: 400px;
+}
+
+#chat-widget.visible {
+    visibility: visible;
+    opacity: 1;
+}
