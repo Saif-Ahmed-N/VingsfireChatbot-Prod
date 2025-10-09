@@ -5,6 +5,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const goBackButton = document.getElementById('go-back-button');
     const goBackContainer = document.getElementById('go-back-container');
     const chatWidget = document.getElementById('chat-widget');
+    const closeWidgetButton = document.getElementById('close-widget-button'); // NEW REFERENCE
 
     // This line makes the chatbot interface visible when the page loads.
     chatWidget.classList.add('visible');
@@ -17,9 +18,18 @@ window.addEventListener('DOMContentLoaded', (event) => {
     };
 
     goBackButton.addEventListener('click', handleGoBack);
+    
+    // NEW FUNCTIONALITY: Close widget by sending message to parent
+    const closeWidget = () => {
+        if (window.parent) {
+            window.parent.postMessage('CLOSE_WIDGET', '*');
+        }
+    };
+    closeWidgetButton.addEventListener('click', closeWidget);
 
     const API_URL = 'https://vingsfirechatbot-api.onrender.com';
     const BACK_COMMAND = '__GO_BACK__';
+    // ... rest of script.js remains unchanged ...
 
     let chatState = {
         stage: 'get_name',
