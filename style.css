@@ -33,6 +33,16 @@ body {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+/* FIX: This new rule forces the phone submit button to be visible and correctly styled. */
+#phone-submit-btn {
+    background-color: #2563EB !important; /* blue-600 */
+    color: white !important;
+}
+#phone-submit-btn:hover {
+    background-color: #1D4ED8 !important; /* blue-700 */
+}
+
+
 .chat-container {
     scroll-behavior: smooth;
 }

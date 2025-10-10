@@ -214,8 +214,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
         scrollToLastElement();
     };
 
+    // FIX: Re-added justify-center and mx-auto to center the buttons
     const renderPillButtons = (options, container) => {
-        container.classList.add('flex', 'flex-wrap', 'gap-2'); // Centering removed to allow left-align
+        container.classList.add('flex', 'flex-wrap', 'gap-2', 'justify-center', 'max-w-full', 'mx-auto');
         options.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
@@ -226,7 +227,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     };
 
     const renderCardButtons = (options, container) => {
-        container.className = 'grid grid-cols-2 gap-3 my-4 max-w-lg'; // Centering removed
+        container.className = 'grid grid-cols-2 gap-3 my-4 max-w-lg mx-auto';
         options.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
@@ -236,11 +237,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
         });
     };
     
-    // FIX IS HERE: The function now correctly accepts 'countryOptions' (an array)
     const renderPhoneForm = (countryOptions, container) => {
         container.className = 'bg-white p-4 rounded-lg shadow-md mb-4 border border-gray-200';
         const form = document.createElement('form');
         form.className = 'space-y-4';
+        // FIX: Added id="phone-submit-btn" to the button
         form.innerHTML = `
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
@@ -255,7 +256,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                 <input id="phone-input" type="tel" placeholder="e.g., 9876543210" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
             </div>
-            <button type="submit" class="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Submit</button>
+            <button id="phone-submit-btn" type="submit" class="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Submit</button>
         `;
         form.onsubmit = (e) => {
             e.preventDefault();
