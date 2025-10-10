@@ -3,12 +3,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const chatForm = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
     const goBackButton = document.getElementById('go-back-button');
-    const goBackContainer = document.getElementById('go-back-container');
     const chatWidget = document.getElementById('chat-widget');
-    const closeWidgetButton = document.getElementById('close-widget-button'); // NEW REFERENCE
+    const closeWidgetButton = document.getElementById('close-widget-button');
 
-    // This line makes the chatbot interface visible when the page loads.
-    chatWidget.classList.add('visible');
+    // This line is no longer needed because the iframe is controlled by the parent page
+    // chatWidget.classList.add('visible'); 
 
     const handleGoBack = () => {
         userInput.disabled = true;
@@ -17,19 +16,28 @@ window.addEventListener('DOMContentLoaded', (event) => {
         handleUserMessage(BACK_COMMAND, 'command');
     };
 
-    goBackButton.addEventListener('click', handleGoBack);
-    
-    // NEW FUNCTIONALITY: Close widget by sending message to parent
-    const closeWidget = () => {
+    const resetChat = () => {
+        chatState = {
+            stage: 'get_name',
+            user_details: { stage_history: [] },
+            custom_category_data: null,
+            messages: [{ role: 'assistant', content: 'Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.' }]
+        };
+        renderChat();
+    };
+
+    const handleClose = () => {
+        resetChat();
         if (window.parent) {
             window.parent.postMessage('CLOSE_WIDGET', '*');
         }
     };
-    closeWidgetButton.addEventListener('click', closeWidget);
+
+    goBackButton.addEventListener('click', handleGoBack);
+    closeWidgetButton.addEventListener('click', handleClose);
 
     const API_URL = 'https://vingsfirechatbot-api.onrender.com';
     const BACK_COMMAND = '__GO_BACK__';
-    // ... rest of script.js remains unchanged ...
 
     let chatState = {
         stage: 'get_name',
@@ -43,10 +51,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const updateGoBackButton = () => {
         if (chatState.user_details.stage_history && chatState.user_details.stage_history.length > 0) {
             goBackButton.classList.remove('hidden');
-            goBackContainer.classList.add('visible');
         } else {
             goBackButton.classList.add('hidden');
-            goBackContainer.classList.remove('visible');
         }
     };
 
@@ -54,8 +60,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         const messageDiv = document.createElement('div');
         messageDiv.className = `flex mb-4 items-start gap-3 ${role === 'user' ? 'justify-end' : 'justify-start'}`;
         const bubble = document.createElement('div');
-        bubble.className = `max-w-xs md:max-w-md p-3 rounded-xl shadow-md ${role === 'user' ? 'bg-indigo-500 text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`;
-
+        bubble.className = `max-w-xs md:max-w-md p-3 rounded-lg shadow-sm ${role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`;
         if (content === 'thinking') {
             bubble.innerHTML = '<div class="flex items-center space-x-2"><div class="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div><div class="w-2 h-2 rounded-full bg-gray-400 animate-pulse [animation-delay:0.2s]"></div><div class="w-2 h-2 rounded-full bg-gray-400 animate-pulse [animation-delay:0.4s]"></div></div>';
         } else {
@@ -68,7 +73,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
             formattedContent = formattedContent.replace(/\n/g, '<br>');
             bubble.innerHTML = formattedContent;
         }
-
         if (role === 'assistant') {
             const avatar = document.createElement('img');
             avatar.src = './images/chatbot.png';
@@ -76,7 +80,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
             avatar.className = 'w-8 h-8 rounded-full';
             messageDiv.appendChild(avatar);
         }
-
         messageDiv.appendChild(bubble);
         chatMessages.appendChild(messageDiv);
         lastMessageElement = messageDiv;
@@ -102,10 +105,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         chatState.stage = 'initial_choice';
         chatState.user_details = { name: userName, stage_history: [] };
         chatState.custom_category_data = null;
-        chatState.messages.push({
-            role: 'assistant',
-            content: `Of course, ${userName}! Let's start a new proposal. How can I help you this time?`
-        });
+        chatState.messages.push({ role: 'assistant', content: `Of course, ${userName}! Let's start a new proposal. How can I help you this time?` });
         renderChat();
         handleUiElements({
             type: "buttons",
@@ -119,25 +119,20 @@ window.addEventListener('DOMContentLoaded', (event) => {
         const userMessageContent = displayInput || input;
         if (type === 'text' && !input.trim() && chatState.stage !== 'get_optional_features' && input !== BACK_COMMAND) return;
         if (input === BACK_COMMAND && chatState.user_details.stage_history.length === 0) return;
-
         const existingUi = document.getElementById('dynamic-ui-container');
         if (existingUi) existingUi.remove();
-
         if (input !== BACK_COMMAND) {
             chatState.messages.push({ role: 'user', content: userMessageContent });
         }
-
         const lowerInput = input.toLowerCase().trim();
         if (lowerInput === 'new proposal') {
             smartReset();
             return;
         }
-
         chatState.messages.push({ role: 'assistant', content: 'thinking' });
         renderChat();
         scrollToLastElement();
         userInput.disabled = true;
-
         try {
             const response = await fetch(`${API_URL}/chat`, {
                 method: 'POST',
@@ -174,10 +169,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 if (chatState.stage === 'final_generation') {
                     triggerProposalGeneration();
                     setTimeout(() => {
-                        chatState.messages.push({
-                            role: 'assistant',
-                            content: 'Your proposal has been successfully generated and sent to your email. Is there anything else I can help you with? You can ask a question, or type **"new proposal"** to start another.'
-                        });
+                        chatState.messages.push({ role: 'assistant', content: 'Your proposal has been successfully generated and sent to your email. Is there anything else I can help you with? You can ask a question, or type **"new proposal"** to start another.' });
                         chatState.stage = 'general_chat';
                         renderChat();
                         scrollToLastElement();
@@ -201,7 +193,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         container.className = 'my-4';
         chatMessages.appendChild(container);
         lastMessageElement = container;
-
         switch (elements.type) {
             case 'buttons':
                 if (elements.display_style === 'cards') renderCardButtons(elements.options, container);
@@ -231,7 +222,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         options.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
-            button.className = 'px-4 py-2 border border-gray-400 text-gray-700 font-medium rounded-full hover:bg-indigo-50 hover:border-indigo-500 transition-all text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+            button.className = 'px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-full hover:bg-blue-50 hover:border-blue-500 transition-all text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
             button.onclick = () => handleUserMessage(option, 'button');
             container.appendChild(button);
         });
@@ -242,13 +233,13 @@ window.addEventListener('DOMContentLoaded', (event) => {
         options.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
-            button.className = 'p-4 bg-white border border-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-indigo-50 hover:border-indigo-500 hover:text-indigo-600 transition-all text-center text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500';
+            button.className = 'p-4 bg-white border border-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-blue-50 hover:border-blue-500 hover:text-blue-600 transition-all text-center text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500';
             button.onclick = () => handleUserMessage(option, 'button');
             container.appendChild(button);
         });
     };
 
-    const renderPhoneForm = (countryOptions, container) => {
+    const renderPhoneForm = (elements, container) => { // Passed elements instead of countryOptions
         container.className = 'bg-white p-4 rounded-lg shadow-md mb-4 border border-gray-200';
         const form = document.createElement('form');
         form.className = 'space-y-4';
@@ -256,17 +247,17 @@ window.addEventListener('DOMContentLoaded', (event) => {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
                 <div class="relative">
-                    <select id="country-select" class="custom-select w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                    <select id="country-select" class="custom-select w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                         <option disabled selected>Please select a country...</option>
-                        ${countryOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                        ${elements.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                     </select>
                 </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input id="phone-input" type="tel" placeholder="e.g., 9876543210" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                <input id="phone-input" type="tel" placeholder="e.g., 9876543210" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
             </div>
-            <button type="submit" class="w-full px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Submit</button>
+            <button type="submit" class="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Submit</button>
         `;
         form.onsubmit = (e) => {
             e.preventDefault();
@@ -305,11 +296,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
             }
         };
         dropZone.onclick = () => fileInput.click();
-        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-indigo-50'); };
-        dropZone.ondragleave = () => dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-blue-500', 'bg-blue-50'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('border-blue-500', 'bg-blue-50');
         dropZone.ondrop = (e) => {
             e.preventDefault();
-            dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
             if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
         };
         fileInput.onchange = () => handleFile(fileInput.files[0]);
