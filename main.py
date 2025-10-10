@@ -29,7 +29,8 @@ app.add_middleware(
         "https://vingsfire-chatbot.netlify.app", # Your production frontend
         "http://127.0.0.1:5500", # Local testing
         "http://localhost:5500",
-        "https://vingsfire-chatbot-prod.vercel.app"  # Local testing
+        "https://vingsfire-chatbot-prod.vercel.app",  # Local testing
+        "https://infinitetechai.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
