@@ -29,6 +29,9 @@ body {
 }
 
 #chat-widget {
+    /* THIS LINE FIXES THE TRANSPARENCY */
+    background-color: white;
+    
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
