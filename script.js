@@ -5,6 +5,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const goBackButton = document.getElementById('go-back-button');
     const chatWidget = document.getElementById('chat-widget');
     const closeWidgetButton = document.getElementById('close-widget-button');
+    const chatbotHeaderIcon = document.getElementById('chatbot-header-icon'); // New reference
 
     const handleGoBack = () => {
         userInput.disabled = true;
@@ -45,11 +46,14 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     let lastMessageElement = null;
 
+    // UPDATED FUNCTION TO SWAP ICONS IN HEADER
     const updateGoBackButton = () => {
         if (chatState.user_details.stage_history && chatState.user_details.stage_history.length > 0) {
             goBackButton.classList.remove('hidden');
+            chatbotHeaderIcon.classList.add('hidden');
         } else {
             goBackButton.classList.add('hidden');
+            chatbotHeaderIcon.classList.remove('hidden');
         }
     };
 
@@ -214,7 +218,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         scrollToLastElement();
     };
 
-    // FIX: Re-added justify-center and mx-auto to center the buttons
     const renderPillButtons = (options, container) => {
         container.classList.add('flex', 'flex-wrap', 'gap-2', 'justify-center', 'max-w-full', 'mx-auto');
         options.forEach(option => {
@@ -241,7 +244,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         container.className = 'bg-white p-4 rounded-lg shadow-md mb-4 border border-gray-200';
         const form = document.createElement('form');
         form.className = 'space-y-4';
-        // FIX: Added id="phone-submit-btn" to the button
         form.innerHTML = `
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
