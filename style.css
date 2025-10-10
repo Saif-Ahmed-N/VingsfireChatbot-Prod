@@ -4,14 +4,38 @@ body {
     font-family: 'Inter', sans-serif;
 }
 
+/* New gradient background for the main widget */
+#chat-widget {
+    background-image: linear-gradient(to bottom, #f3f4f6, white);
+    height: 100%;
+    width: 100%;
+    border-radius: 12px;
+}
+
+/* Style overrides for a cleaner look */
+#chat-messages {
+    background-color: transparent; /* Make the message area transparent to show the gradient */
+}
+
+/* Softer shadows and corners for message bubbles */
+#chat-messages > div > div {
+    border-radius: 0.75rem; /* Equivalent to rounded-xl */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* New style for the pill-shaped buttons */
+#dynamic-ui-container button {
+    border-radius: 0.5rem; /* Less rounded */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    background-color: white;
+}
+
 .chat-container {
     scroll-behavior: smooth;
 }
-
 .chat-container::-webkit-scrollbar {
     width: 6px;
 }
-
 .chat-container::-webkit-scrollbar-thumb {
     background-color: #d1d5db;
     border-radius: 3px;
@@ -23,20 +47,6 @@ body {
     transition: opacity 0.3s ease-in-out;
     padding-top: 0.5rem;
 }
-
 #go-back-container.visible {
-    opacity: 1;
-}
-
-#chat-widget {
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-    height: 600px;
-    width: 400px;
-}
-
-#chat-widget.visible {
-    visibility: visible;
     opacity: 1;
 }
