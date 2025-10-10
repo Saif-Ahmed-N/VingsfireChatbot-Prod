@@ -4,6 +4,7 @@ body {
     font-family: 'Inter', sans-serif;
 }
 
+/* New gradient background for the main widget */
 #chat-widget {
     background-image: linear-gradient(to bottom, #f9fafb, white);
     height: 100%;
@@ -11,31 +12,39 @@ body {
     border-radius: 12px;
 }
 
+/* Make the default message area transparent to show the gradient */
 #chat-messages {
     background-color: transparent;
 }
 
+/* Softer shadows and cleaner corners for all message bubbles */
 #chat-messages > div > div {
     border-radius: 0.75rem;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
 }
 
+/* New style for the pill-shaped quick reply buttons */
 #dynamic-ui-container button {
-    border-radius: 9999px;
+    border-radius: 9999px; /* Re-apply pill shape */
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     background-color: white;
     font-weight: 500;
     transition: all 0.2s ease-in-out;
 }
 
+/* Make buttons more interactive on hover */
 #dynamic-ui-container button:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+/* --- Unchanged styles below --- */
+
 .chat-container {
     scroll-behavior: smooth;
 }
+
+/* A more subtle scrollbar to match the new design */
 .chat-container::-webkit-scrollbar {
     width: 5px;
 }
@@ -48,4 +57,12 @@ body {
     border: 3px solid transparent;
 }
 
-/* DELETED the old #go-back-container rules from here */
+#go-back-container {
+    min-height: 48px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    padding-top: 0.5rem;
+}
+#go-back-container.visible {
+    opacity: 1;
+}
