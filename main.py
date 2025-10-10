@@ -19,7 +19,7 @@ from utils import send_email_with_attachment
 
 app = FastAPI(
     title="Infinite Tech AI Proposal API",
-    description="API for the Vingsfire chatbot to handle conversations and generate proposals.",
+    description="API for the InfiniteTech chatbot to handle conversations and generate proposals.",
     version="1.0.0"
 )
 
@@ -109,8 +109,8 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         print("STEP 4: Attempting to send email..."); sys.stdout.flush()
         send_email_with_attachment(
             receiver_email=user_details['email'],
-            subject=f"Your Personalized Proposal from Vingsfire for {user_details['category']}",
-            body=f"Dear {user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Vingsfire Team",
+            subject=f"Your Personalized Proposal from Infinte Tech for {user_details['category']}",
+            body=f"Dear {user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Infinite Tech Team",
             attachment_path=output_path
         )
         print(f"--- BACKGROUND TASK SUCCEEDED: Successfully sent proposal to {user_details['email']} ---"); sys.stdout.flush()
@@ -212,7 +212,7 @@ async def handle_chat(request: ChatRequest):
         if user_input == "Explore Products or Services":
             return ChatResponse(next_stage="get_email", bot_message="Great! Let's get some basic details. What is your email address?", user_details=user_details)
         elif user_input == "Looking for a Job":
-            return ChatResponse(next_stage="job_application", bot_message="We're always looking for talent! Our HR team can be reached at `jobs@vingsfire.com`. You can also upload your CV.", user_details=user_details, ui_elements={"type": "file_upload"})
+            return ChatResponse(next_stage="job_application", bot_message="We're always looking for talent! Our HR team can be reached at `jobs@infinitetech.com`. You can also upload your CV.", user_details=user_details, ui_elements={"type": "file_upload"})
     elif stage == "get_email":
         try:
             valid = validate_email(user_input, check_deliverability=False)

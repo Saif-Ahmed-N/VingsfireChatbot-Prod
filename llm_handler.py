@@ -67,7 +67,7 @@ def generate_descriptive_text(category_data, custom_category_name=None):
         client = Groq(api_key=api_key)
         
         prompt = f"""
-        You are a professional business proposal writer for a tech company, Vingsfire.
+        You are a professional business proposal writer for a tech company, Infinte Tech.
         Your task is to generate professional, human-like text for a proposal.
 
         **Project Information Provided:**
