@@ -6,39 +6,55 @@ body {
 
 /* New gradient background for the main widget */
 #chat-widget {
-    background-image: linear-gradient(to bottom, #f3f4f6, white);
+    background-image: linear-gradient(to bottom, #f9fafb, white);
     height: 100%;
     width: 100%;
     border-radius: 12px;
 }
 
-/* Style overrides for a cleaner look */
+/* Make the default message area transparent to show the gradient */
 #chat-messages {
-    background-color: transparent; /* Make the message area transparent to show the gradient */
+    background-color: transparent;
 }
 
-/* Softer shadows and corners for message bubbles */
+/* Softer shadows and cleaner corners for all message bubbles */
 #chat-messages > div > div {
-    border-radius: 0.75rem; /* Equivalent to rounded-xl */
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
 }
 
-/* New style for the pill-shaped buttons */
+/* New style for the pill-shaped quick reply buttons */
 #dynamic-ui-container button {
-    border-radius: 0.5rem; /* Less rounded */
+    border-radius: 9999px; /* Re-apply pill shape */
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     background-color: white;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
 }
+
+/* Make buttons more interactive on hover */
+#dynamic-ui-container button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* --- Unchanged styles below --- */
 
 .chat-container {
     scroll-behavior: smooth;
 }
+
+/* A more subtle scrollbar to match the new design */
 .chat-container::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
+}
+.chat-container::-webkit-scrollbar-track {
+    background: transparent;
 }
 .chat-container::-webkit-scrollbar-thumb {
     background-color: #d1d5db;
-    border-radius: 3px;
+    border-radius: 20px;
+    border: 3px solid transparent;
 }
 
 #go-back-container {
