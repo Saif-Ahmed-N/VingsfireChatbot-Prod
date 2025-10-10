@@ -6,9 +6,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const chatWidget = document.getElementById('chat-widget');
     const closeWidgetButton = document.getElementById('close-widget-button');
 
-    // This line is no longer needed because the iframe is controlled by the parent page
-    // chatWidget.classList.add('visible'); 
-
     const handleGoBack = () => {
         userInput.disabled = true;
         const existingUi = document.getElementById('dynamic-ui-container');
@@ -218,7 +215,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     };
 
     const renderPillButtons = (options, container) => {
-        container.classList.add('flex', 'flex-wrap', 'gap-2', 'justify-center', 'max-w-full', 'mx-auto');
+        container.classList.add('flex', 'flex-wrap', 'gap-2'); // Centering removed to allow left-align
         options.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
@@ -229,7 +226,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     };
 
     const renderCardButtons = (options, container) => {
-        container.className = 'grid grid-cols-2 gap-3 my-4 max-w-lg mx-auto';
+        container.className = 'grid grid-cols-2 gap-3 my-4 max-w-lg'; // Centering removed
         options.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
@@ -238,8 +235,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
             container.appendChild(button);
         });
     };
-
-    const renderPhoneForm = (elements, container) => { // Passed elements instead of countryOptions
+    
+    // FIX IS HERE: The function now correctly accepts 'countryOptions' (an array)
+    const renderPhoneForm = (countryOptions, container) => {
         container.className = 'bg-white p-4 rounded-lg shadow-md mb-4 border border-gray-200';
         const form = document.createElement('form');
         form.className = 'space-y-4';
@@ -249,7 +247,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 <div class="relative">
                     <select id="country-select" class="custom-select w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                         <option disabled selected>Please select a country...</option>
-                        ${elements.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                        ${countryOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                     </select>
                 </div>
             </div>
