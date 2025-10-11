@@ -74,30 +74,23 @@ def generate_local_budget_options(country_info):
 
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
     try:
-        # Determine the correct data source (AI-generated or Excel)
         if custom_category_name and custom_category_data:
             data_source = custom_category_data
-            user_details['category'] = custom_category_name  # Ensure the PDF uses the custom name
+            user_details['category'] = custom_category_name
         else:
             main_service = user_details['main_service']
             sub_cat = user_details.get('sub_category', '_default')
             data_source = services_data[main_service][sub_cat][category]
-
-        # Continue with the rest of the logic using the correct data_source
         user_details['contact'] = user_details.get('phone', 'N/A')
         update_lead_details(user_details["email"], user_details)
         country_info = countries[user_details['country']]
-        
         proposal_costs = prepare_proposal_data(data_source, country_info, user_details['company_size'])
         proposal_text = generate_descriptive_text(data_source, user_details.get('category'))
-        
         if not proposal_text: raise ValueError("AI failed to generate text.")
-        
         output_dir = "proposals"; os.makedirs(output_dir, exist_ok=True)
         project_name_slug = user_details['category'].replace(' ', '_').replace('/', '_')
         file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d')}.pdf"
         output_path = os.path.join(output_dir, file_name)
-        
         create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path)
         send_email_with_attachment(
             receiver_email=user_details['email'],
@@ -208,11 +201,22 @@ async def handle_chat(request: ChatRequest):
     elif stage == "confirm_proposal":
         if user_input_lower == "yes, send proposal": return ChatResponse(next_stage="final_generation", bot_message="Excellent. Generating your proposal now...", user_details=user_details)
         else: return ChatResponse(next_stage="general_chat", bot_message="No problem. How else can I help?", user_details=user_details)
+    
+    # --- BUG FIX FOR JOB APPLICATION FLOW ---
     elif stage in ["general_chat", "final_generation", "job_application"]:
+        # Handle the CV upload confirmation message specifically
+        if stage == "job_application" and user_input.startswith("Uploaded:"):
+            bot_message = "Thank you for uploading your resume. Our HR team will review it and get in touch if there is a suitable opening. Is there anything else I can help with?"
+            return ChatResponse(next_stage="general_chat", bot_message=bot_message, user_details=user_details)
+        
+        # Keep the existing logic for other general chat scenarios
         if any(p in user_input_lower for p in ['where is my', 'get the proposal', 'send it']): return ChatResponse(next_stage="general_chat", bot_message="Your proposal was sent to your email. Please check your inbox and spam folder.", user_details=user_details)
         if any(p in user_input_lower for p in ['no', 'bye', 'goodbye']): return ChatResponse(next_stage="ended", bot_message="You're welcome! Have a great day.", user_details=user_details)
+        
+        # Fallback to general AI for other questions
         answer = get_general_response(user_input)
         return ChatResponse(next_stage="general_chat", bot_message=answer, user_details=user_details)
+    
     raise HTTPException(status_code=400, detail=f"Invalid chat stage: {stage}")
 
 @app.post("/generate-proposal", status_code=202)
