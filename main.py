@@ -105,7 +105,7 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
 
         # --- PART 2: SEND LEAD NOTIFICATION TO SALES ---
         print("--- SALES NOTIFICATION PROCESS STARTED ---")
-        sales_email = "partha@infinitetechai.com"
+        sales_email = "saifahmedn2004@gmail.com"
         sales_pdf_filename = f"Lead_Summary_{user_details['company'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
         sales_pdf_path = os.path.join(output_dir, sales_pdf_filename)
         create_lead_summary_pdf(user_details, sales_pdf_path)

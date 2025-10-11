@@ -2,7 +2,7 @@ from fpdf import FPDF
 import os
 from datetime import datetime
 
-COMPANY_EMAIL = "sales@infinitecard.in"
+COMPANY_EMAIL = "saifahmedn2004@gmail.com"
 COMPANY_PHONE = "+91 9884777171"
 
 class PDF(FPDF):
