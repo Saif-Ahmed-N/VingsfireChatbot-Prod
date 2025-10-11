@@ -105,7 +105,7 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
     # --- NEW ROBUST SALES NOTIFICATION BLOCK ---
     try:
         print("--- SALES NOTIFICATION PROCESS STARTED ---"); sys.stdout.flush()
-        sales_email = "saifahmedn2004@gmail.com"
+        sales_email = "saifahmedn2004@gmail.com" # UPDATED for testing
         sales_pdf_filename = f"Lead_Summary_{final_user_details['company'].replace(' ', '_')}.pdf"
         sales_pdf_path = os.path.join(output_dir, sales_pdf_filename)
         
@@ -123,7 +123,6 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         print(f"--- SALES NOTIFICATION SENT to {sales_email} ---"); sys.stdout.flush()
     except Exception as e:
         print(f"--- SALES NOTIFICATION FAILED: Could not send lead summary. Error: {e} ---"); sys.stdout.flush()
-
 
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
     if previous_stage == "get_name": user_details.pop('name', None); return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)

@@ -2,7 +2,7 @@ from fpdf import FPDF
 import os
 from datetime import datetime
 
-COMPANY_EMAIL = "saifahmedn2004@gmail.com"
+COMPANY_EMAIL = "partha@infinitetechai.com"
 COMPANY_PHONE = "+91 9884777171"
 
 class PDF(FPDF):
@@ -40,7 +40,7 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.section_title("Client & Project Overview")
     pdf.set_font("DejaVu", "", 11)
     
-    # CRITICAL FIX: Use the final, correct project name
+    # Use the final, correct project name, including custom names
     project_display_name = user_details.get('category', 'N/A')
     
     details = {
@@ -61,7 +61,7 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.ln(4)
     pdf.section_title("Introduction")
     pdf.set_font("DejaVu", "", 11)
-    pdf.multi_cell(0, 6, proposal_text.get('introduction', ''))
+    pdf.multi_cell(0, 6, proposal_text.get('introduction', '')) # Reduced line height
     pdf.ln(4)
     pdf.section_title("Estimated Cost Breakdown")
     pdf.set_font("DejaVu", "B", 10)
@@ -96,12 +96,16 @@ def create_lead_summary_pdf(user_details, output_path):
     else:
         pdf.set_font("Arial", "B", 12)
     pdf.add_page()
+    
+    # Professional Header
     pdf.set_fill_color(45, 55, 72); pdf.set_text_color(255, 255, 255)
     pdf.set_font("DejaVu", "B", 18)
     pdf.cell(0, 15, "New Chatbot Lead Notification", 0, 1, 'C', fill=True)
     pdf.ln(12)
+
     pdf.set_text_color(0); pdf.set_font("DejaVu", "", 11)
     
+    # Logic to handle "Others" project name
     project_display = user_details.get('category', 'N/A')
     custom_name = user_details.get('custom_category_name')
     if project_display == "Custom Service" and custom_name:
@@ -115,10 +119,13 @@ def create_lead_summary_pdf(user_details, output_path):
         "Service": user_details.get('main_service', 'N/A'), "Project": project_display,
         "Additional Details": user_details.get('description', 'N/A')
     }
+    
+    # Draw table-like structure
     for key, value in details_to_include.items():
         pdf.set_font("DejaVu", "B", 11); pdf.set_fill_color(243, 244, 246)
         pdf.cell(55, 10, f" {key}:", 1, 0, 'L', fill=True)
         pdf.set_font("DejaVu", "", 11)
         pdf.multi_cell(0, 10, f" {str(value)}", 1, 'L')
+        
     try: pdf.output(output_path)
     except Exception as e: print(f"Error while saving lead summary PDF: {e}")
