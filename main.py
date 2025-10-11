@@ -27,9 +27,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://vingsfire-chatbot-prod.vercel.app",  # Your Vercel frontend
-        # Add any other frontend URLs here
-        "http://127.0.0.1:5500",  # Local testing
-        "http://localhost:5500"   # Local testing
+        "http://127.0.0.1:5500",
+        "http://localhost:5500"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -60,7 +59,6 @@ class ProposalRequest(BaseModel):
     custom_category_data: Dict[str, Any] | None = None
 
 def generate_local_budget_options(country_info):
-    # --- UPDATED BUDGET RANGES ---
     base_budgets_inr = [(100000, 400000), (500000, 800000), (800000, 1000000), (1000000, None)]
     exchange_rate = country_info['exchange_rate_from_inr']
     symbol = country_info['currency_symbol']
@@ -76,22 +74,23 @@ def generate_local_budget_options(country_info):
 
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
     try:
-        # If a custom name exists, ensure it's used as the main category for the proposal
-        if custom_category_name:
-            user_details['category'] = custom_category_name
-
-        user_details['contact'] = user_details.get('phone', 'N/A')
-        update_lead_details(user_details["email"], user_details)
-        if custom_category_name:
-            category_data = custom_category_data
+        # Determine the correct data source (AI-generated or Excel)
+        if custom_category_name and custom_category_data:
+            data_source = custom_category_data
+            user_details['category'] = custom_category_name  # Ensure the PDF uses the custom name
         else:
             main_service = user_details['main_service']
             sub_cat = user_details.get('sub_category', '_default')
-            category_data = services_data[main_service][sub_cat][category]
+            data_source = services_data[main_service][sub_cat][category]
+
+        # Continue with the rest of the logic using the correct data_source
+        user_details['contact'] = user_details.get('phone', 'N/A')
+        update_lead_details(user_details["email"], user_details)
         country_info = countries[user_details['country']]
         
-        proposal_costs = prepare_proposal_data(category_data, country_info, user_details['company_size'])
-        proposal_text = generate_descriptive_text(category_data, user_details.get('category'))
+        proposal_costs = prepare_proposal_data(data_source, country_info, user_details['company_size'])
+        proposal_text = generate_descriptive_text(data_source, user_details.get('category'))
+        
         if not proposal_text: raise ValueError("AI failed to generate text.")
         
         output_dir = "proposals"; os.makedirs(output_dir, exist_ok=True)
@@ -110,38 +109,19 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---"); sys.stdout.flush()
 
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
-    # This function remains unchanged, but is included for completeness
-    if previous_stage == "get_name":
-        user_details.pop('name', None)
-        return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)
-    elif previous_stage == "initial_choice":
-        return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_details.get('name', 'there')}! How can I help you today?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
-    elif previous_stage == "get_email":
-        user_details.pop('email', None)
-        return ChatResponse(next_stage="get_email", bot_message="What is your email address?", user_details=user_details)
-    elif previous_stage == "get_phone":
-        user_details.pop('phone', None); user_details.pop('country', None)
-        return ChatResponse(next_stage="get_phone", bot_message="Please re-enter your country and contact phone number.", user_details=user_details, ui_elements={"type": "form", "form_type": "phone", "options": list(countries.keys())})
-    elif previous_stage == "get_company":
-        user_details.pop('company', None)
-        return ChatResponse(next_stage="get_company", bot_message="What is your company's name?", user_details=user_details)
-    elif previous_stage == "get_company_size":
-        user_details.pop('company_size', None)
-        return ChatResponse(next_stage="get_company_size", bot_message="What is the size of your company?", user_details=user_details, ui_elements={"type": "dropdown", "options": ["0-10", "10-100", "100-500", "500+"]})
+    if previous_stage == "get_name": user_details.pop('name', None); return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)
+    elif previous_stage == "initial_choice": return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_details.get('name', 'there')}! How can I help you today?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
+    elif previous_stage == "get_email": user_details.pop('email', None); return ChatResponse(next_stage="get_email", bot_message="What is your email address?", user_details=user_details)
+    elif previous_stage == "get_phone": user_details.pop('phone', None); user_details.pop('country', None); return ChatResponse(next_stage="get_phone", bot_message="Please re-enter your country and contact phone number.", user_details=user_details, ui_elements={"type": "form", "form_type": "phone", "options": list(countries.keys())})
+    elif previous_stage == "get_company": user_details.pop('company', None); return ChatResponse(next_stage="get_company", bot_message="What is your company's name?", user_details=user_details)
+    elif previous_stage == "get_company_size": user_details.pop('company_size', None); return ChatResponse(next_stage="get_company_size", bot_message="What is the size of your company?", user_details=user_details, ui_elements={"type": "dropdown", "options": ["0-10", "10-100", "100-500", "500+"]})
     elif previous_stage == "get_budget":
-        user_details.pop('budget', None)
-        country_info = countries[user_details['country']]
-        budget_options = generate_local_budget_options(country_info)
+        user_details.pop('budget', None); country_info = countries[user_details['country']]; budget_options = generate_local_budget_options(country_info)
         return ChatResponse(next_stage="get_budget", bot_message=f"What is your approximate budget for this project in your local currency ({country_info['currency_code']})?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": budget_options})
-    elif previous_stage == "get_main_service":
-        user_details.pop('main_service', None)
-        return ChatResponse(next_stage="get_main_service", bot_message="Which of our main services are you interested in?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": main_services})
+    elif previous_stage == "get_main_service": user_details.pop('main_service', None); return ChatResponse(next_stage="get_main_service", bot_message="Which of our main services are you interested in?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": main_services})
     elif previous_stage == "get_sub_category":
-        user_details.pop('sub_category', None)
-        main_service = user_details['main_service']
-        if main_service == "App Development":
-            app_sub_cats = list(app_sub_category_definitions.keys())
-            return ChatResponse(next_stage="get_sub_category", bot_message="Please select the category that best fits your app idea.", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": app_sub_cats})
+        user_details.pop('sub_category', None); main_service = user_details['main_service']
+        if main_service == "App Development": return ChatResponse(next_stage="get_sub_category", bot_message="Please select the category that best fits your app idea.", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": list(app_sub_category_definitions.keys())})
         else: return ChatResponse(next_stage="get_main_service", bot_message="Which of our main services are you interested in?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": main_services})
     elif previous_stage == "get_specific_service":
         user_details.pop('category', None); user_details.pop('custom_category_name', None)
@@ -162,8 +142,7 @@ async def handle_chat(request: ChatRequest):
     if "new proposal" in user_input_lower and user_details.get('name'):
         user_details = {'name': user_details['name'], 'stage_history': []}
         return ChatResponse(next_stage="initial_choice", bot_message=f"Of course, {user_details['name']}! Let's start a new proposal.", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
-    if stage in ["general_chat", "final_generation"] and any(p in user_input_lower for p in ['connect', 'talk to']):
-        return ChatResponse(next_stage='general_chat', bot_message="Of course. You can reach our team at **sales@infinitecard.in**.", user_details=user_details)
+    if stage in ["general_chat", "final_generation"] and any(p in user_input_lower for p in ['connect', 'talk to']): return ChatResponse(next_stage='general_chat', bot_message="Of course. You can reach our team at **sales@infinitecard.in**.", user_details=user_details)
     if stage not in ['ended', 'general_chat', 'final_generation', 'get_name']: user_details['stage_history'].append(stage)
     if stage == "get_name":
         user_details['name'] = user_input
@@ -173,26 +152,22 @@ async def handle_chat(request: ChatRequest):
         elif user_input == "Looking for a Job": return ChatResponse(next_stage="job_application", bot_message="You can reach our HR team at `jobs@vingsfire.com` or upload your CV below.", user_details=user_details, ui_elements={"type": "file_upload"})
     elif stage == "get_email":
         try:
-            valid = validate_email(user_input, check_deliverability=False)
-            user_details['email'] = valid.email
+            valid = validate_email(user_input, check_deliverability=False); user_details['email'] = valid.email
             return ChatResponse(next_stage="get_phone", bot_message="Thank you. Please select your country and enter your phone number.", user_details=user_details, ui_elements={"type": "form", "form_type": "phone", "options": list(countries.keys())})
         except EmailNotValidError: return ChatResponse(next_stage="get_email", bot_message="That email seems invalid. Please try again.", user_details=user_details)
     elif stage == "get_phone":
         try:
-            country, phone_num = user_input.split(":", 1)
-            country_info = countries[country]
+            country, phone_num = user_input.split(":", 1); country_info = countries[country]
             parsed_number = phonenumbers.parse(phone_num, country_info['iso_code'])
             if not phonenumbers.is_valid_number(parsed_number): raise ValueError("Invalid number.")
-            user_details.update({'phone': phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164), 'country': country})
-            save_lead(user_details)
+            user_details.update({'phone': phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164), 'country': country}); save_lead(user_details)
             return ChatResponse(next_stage="get_company", bot_message="Perfect. What is your company's name?", user_details=user_details)
         except Exception: return ChatResponse(next_stage="get_phone", bot_message="That phone number seems invalid. Please try again.", user_details=user_details, ui_elements={"type": "form", "form_type": "phone", "options": list(countries.keys())})
     elif stage == "get_company":
         user_details['company'] = user_input
         return ChatResponse(next_stage="get_company_size", bot_message="Got it. What's the size of your company?", user_details=user_details, ui_elements={"type": "dropdown", "options": ["0-10", "10-100", "100-500", "500+"]})
     elif stage == "get_company_size":
-        user_details['company_size'] = user_input
-        country_info = countries[user_details['country']]
+        user_details['company_size'] = user_input; country_info = countries[user_details['country']]
         return ChatResponse(next_stage="get_budget", bot_message=f"Thank you. What's your approximate budget in {country_info['currency_code']}?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": generate_local_budget_options(country_info)})
     elif stage == "get_budget":
         user_details['budget'] = user_input
@@ -205,8 +180,7 @@ async def handle_chat(request: ChatRequest):
             options = list(services_data.get(user_input, {}).get('_default', {}).keys()) + ["Others"]
             return ChatResponse(next_stage="get_specific_service", bot_message=f"Excellent. Which specific type of {user_input} do you need?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": options})
     elif stage == "get_sub_category":
-        user_details['sub_category'] = user_input
-        main_service = user_details['main_service']
+        user_details['sub_category'] = user_input; main_service = user_details['main_service']
         if main_service == "App Development": options = app_sub_category_definitions.get(user_input, []) + ["Others"]
         else: options = list(services_data.get(main_service, {}).get(user_input, {}).keys()) + ["Others"]
         return ChatResponse(next_stage="get_specific_service", bot_message=f"Perfect. Which specific type of {user_input} are you looking for?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": options})
@@ -225,31 +199,12 @@ async def handle_chat(request: ChatRequest):
         ai_estimate = estimate_custom_service_cost(user_details['custom_category_name'], main_service, all_examples)
         if ai_estimate: return ChatResponse(next_stage="get_optional_features", bot_message="I've prepared a preliminary estimate. Any other specific features to add? (Optional)", user_details=user_details, ui_elements={"type": "store_data", "data": ai_estimate})
         else: return ChatResponse(next_stage="get_specific_service", bot_message="I'm sorry, I couldn't generate an estimate. Please try rephrasing or select an option.", user_details=user_details)
-
-    # --- UPDATED CONFIRMATION SUMMARY ---
     elif stage == "get_optional_features":
         user_details['description'] = user_input or "No additional features requested."
-        
-        # Determine the project name (standard or custom)
         project_name = user_details.get('custom_category_name', user_details.get('category'))
-        
-        # Build the summary string
-        summary = (
-            f"Please confirm your details:\n"
-            f"- **Email:** {user_details['email']}\n"
-            f"- **Phone:** {user_details['phone']}\n"
-            f"- **Company:** {user_details['company']}\n"
-            f"- **Project:** {project_name}"
-        )
-
-        # Conditionally add the additional details to the summary
-        if user_details.get('description') and user_details['description'] != "No additional features requested.":
-            summary += f"\n- **Additional Details:** {user_details['description']}"
-            
-        summary += "\n\nShall I generate and email the full proposal now?"
-        
+        additional_info = f"\n- **Additional Details:** {user_details['description']}" if user_details.get('description') and user_details['description'] != "No additional features requested." else ""
+        summary = f"Please confirm your details:\n- **Email:** {user_details['email']}\n- **Phone:** {user_details['phone']}\n- **Company:** {user_details['company']}\n- **Project:** {project_name}{additional_info}\n\nShall I generate and email the full proposal now?"
         return ChatResponse(next_stage="confirm_proposal", bot_message=summary, user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Yes, Send Proposal", "No, I Have Questions"]})
-    
     elif stage == "confirm_proposal":
         if user_input_lower == "yes, send proposal": return ChatResponse(next_stage="final_generation", bot_message="Excellent. Generating your proposal now...", user_details=user_details)
         else: return ChatResponse(next_stage="general_chat", bot_message="No problem. How else can I help?", user_details=user_details)

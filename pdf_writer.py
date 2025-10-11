@@ -1,9 +1,9 @@
 from fpdf import FPDF
 import os
+from datetime import datetime
 
-# --- Define Constants for Company Information ---
 COMPANY_EMAIL = "Partha@infinitetechai.com"
-COMPANY_PHONE = "+91 98847 77171" # Your constant company phone number
+COMPANY_PHONE = "+91 98847 77171"
 
 class PDF(FPDF):
     def header(self):
@@ -28,17 +28,12 @@ class PDF(FPDF):
 def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path):
     pdf = PDF()
 
-    # --- Font Loading ---
-    # Assuming 'fonts' directory is next to this file
     font_path = os.path.join(os.path.dirname(__file__), "fonts") 
     
-    # Try to load custom fonts for Unicode support (e.g., currency symbols)
     if not os.path.exists(os.path.join(font_path, "DejaVuSans.ttf")):
-        print("WARNING: DejaVu fonts not found. PDF text may not render correctly. Using Arial.")
-        # Fallback to standard font if DejaVu is missing
+        print("WARNING: DejaVu fonts not found. Using Arial.")
         pdf.set_font("Arial", "B", 12) 
     else:
-        # Load DejaVu fonts if present
         pdf.add_font("DejaVu", "", os.path.join(font_path, "DejaVuSans.ttf"), uni=True)
         pdf.add_font("DejaVu", "B", os.path.join(font_path, "DejaVuSans-Bold.ttf"), uni=True)
         pdf.add_font("DejaVu", "I", os.path.join(font_path, "DejaVuSans-Oblique.ttf"), uni=True)
@@ -46,10 +41,16 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # --- Client Details ---
     pdf.section_title("Client & Project Overview")
     pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Company:", border=0)
+    
+    # --- BUG FIX: ADDED DATE TO THE PROPOSAL ---
+    pdf.cell(40, 7, "Date:")
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 7, datetime.now().strftime("%B %d, %Y"), ln=True)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(40, 7, "Company:")
     pdf.set_font("DejaVu", "B", 11)
     pdf.cell(0, 7, user_details.get('company', 'N/A'), ln=True)
     
@@ -74,13 +75,11 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.cell(0, 7, user_details.get('category', 'N/A'), ln=True)
     pdf.ln(8)
 
-    # --- Introduction ---
     pdf.section_title("Introduction")
     pdf.set_font("DejaVu", "", 11)
     pdf.multi_cell(0, 7, proposal_text.get('introduction', ''))
     pdf.ln(8)
     
-    # --- Cost Breakdown ---
     pdf.section_title("Estimated Cost Breakdown")
     pdf.set_font("DejaVu", "B", 10)
     pdf.set_fill_color(0, 51, 102)
@@ -108,7 +107,6 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.cell(60, 10, proposal_costs.get('final_total_str', ''), 1, 1, "R")
     pdf.ln(10)
 
-    # --- Contact Section ---
     pdf.section_title("Contact Us to Get Started")
     pdf.set_font("DejaVu", "", 10)
     pdf.set_text_color(0)
