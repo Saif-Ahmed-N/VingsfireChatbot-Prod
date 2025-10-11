@@ -149,7 +149,7 @@ async def handle_chat(request: ChatRequest):
         return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_input}! How can I help?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
     elif stage == "initial_choice":
         if user_input == "Explore Products or Services": return ChatResponse(next_stage="get_email", bot_message="Great! What is your email address?", user_details=user_details)
-        elif user_input == "Looking for a Job": return ChatResponse(next_stage="job_application", bot_message="You can reach our HR team at `jobs@vingsfire.com` or upload your CV below.", user_details=user_details, ui_elements={"type": "file_upload"})
+        elif user_input == "Looking for a Job": return ChatResponse(next_stage="job_application", bot_message="You can reach our HR team at `partha@infinitetechai.com` or upload your CV below.", user_details=user_details, ui_elements={"type": "file_upload"})
     elif stage == "get_email":
         try:
             valid = validate_email(user_input, check_deliverability=False); user_details['email'] = valid.email
