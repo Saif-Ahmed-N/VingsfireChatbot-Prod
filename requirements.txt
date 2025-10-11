@@ -1,22 +1,15 @@
-# Core Web Framework and Production Server
 fastapi
 uvicorn
 gunicorn
-
-# Data Handling and Utilities
-pandas
-openpyxl  # Required for pandas to read/write .xlsx files
-python-dotenv
-
-# LLM and AI Integration
-groq
-
-# Database (MongoDB)
-pymongo
-certifi
-
-# Validation and Utility
+pydantic
 phonenumbers
 email-validator
-fpdf2  # The correct library for PDF generation (fpdf)
+pandas
+openpyxl
+groq
+fpdf2
+pymongo
+python-dotenv
+certifi
 sendgrid
+dnspython

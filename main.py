@@ -26,8 +26,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://vingsfire-chatbot-prod.vercel.app",  # Your Vercel frontend
-        # Add your other WordPress site URLs here if needed
+        "https://vingsfire-chatbot-prod.vercel.app",
         "http://127.0.0.1:5500",
         "http://localhost:5500"
     ],
@@ -75,7 +74,6 @@ def generate_local_budget_options(country_info):
 
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
     try:
-        # --- PART 1: SEND PROPOSAL TO CLIENT ---
         print("--- CLIENT PROPOSAL PROCESS STARTED ---")
         if custom_category_name and custom_category_data:
             data_source = custom_category_data
@@ -103,7 +101,6 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         )
         print(f"--- CLIENT PROPOSAL SENT to {user_details['email']} ---")
 
-        # --- PART 2: SEND LEAD NOTIFICATION TO SALES ---
         print("--- SALES NOTIFICATION PROCESS STARTED ---")
         sales_email = "saifahmedn2004@gmail.com"
         sales_pdf_filename = f"Lead_Summary_{user_details['company'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
@@ -163,9 +160,14 @@ async def handle_chat(request: ChatRequest):
         elif user_input == "Looking for a Job": return ChatResponse(next_stage="job_application", bot_message="You can reach our HR team at `partha@infinitetechai.com` or upload your CV below.", user_details=user_details, ui_elements={"type": "file_upload"})
     elif stage == "get_email":
         try:
-            valid = validate_email(user_input, check_deliverability=False); user_details['email'] = valid.email
+            valid = validate_email(user_input, check_deliverability=True)
+            user_details['email'] = valid.email
             return ChatResponse(next_stage="get_phone", bot_message="Thank you. Please select your country and enter your phone number.", user_details=user_details, ui_elements={"type": "form", "form_type": "phone", "options": list(countries.keys())})
-        except EmailNotValidError: return ChatResponse(next_stage="get_email", bot_message="That email seems invalid. Please try again.", user_details=user_details)
+        except EmailNotValidError: 
+            return ChatResponse(next_stage="get_email", bot_message="That email address seems invalid or doesn't exist. Please provide a correct email.", user_details=user_details)
+        except Exception as e:
+            print(f"Email validation error: {e}")
+            return ChatResponse(next_stage="get_email", bot_message="I couldn't verify that email address. Please try again with a valid email.", user_details=user_details)
     elif stage == "get_phone":
         try:
             country, phone_num = user_input.split(":", 1); country_info = countries[country]
