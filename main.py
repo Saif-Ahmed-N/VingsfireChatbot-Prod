@@ -26,7 +26,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://vingsfire-chatbot-prod.vercel.app",  # Your Vercel frontend
+        "https://vingsfire-chatbot-prod.vercel.app",
         "http://127.0.0.1:5500",
         "http://localhost:5500"
     ],
@@ -42,87 +42,88 @@ if not services_data:
 BACK_COMMAND = "__GO_BACK__"
 
 class ChatRequest(BaseModel):
-    stage: str
-    user_details: Dict[str, Any]
-    user_input: str | None = None
+    stage: str; user_details: Dict[str, Any]; user_input: str | None = None
 
 class ChatResponse(BaseModel):
-    next_stage: str
-    bot_message: str
-    user_details: Dict[str, Any]
-    ui_elements: Dict[str, Any] | None = None
+    next_stage: str; bot_message: str; user_details: Dict[str, Any]; ui_elements: Dict[str, Any] | None = None
 
 class ProposalRequest(BaseModel):
-    user_details: Dict[str, Any]
-    category: str
-    custom_category_name: str | None = None
-    custom_category_data: Dict[str, Any] | None = None
+    user_details: Dict[str, Any]; category: str; custom_category_name: str | None = None; custom_category_data: Dict[str, Any] | None = None
 
 def generate_local_budget_options(country_info):
     base_budgets_inr = [(100000, 400000), (500000, 800000), (800000, 1000000), (1000000, None)]
-    exchange_rate = country_info['exchange_rate_from_inr']
-    symbol = country_info['currency_symbol']
+    exchange_rate = country_info['exchange_rate_from_inr']; symbol = country_info['currency_symbol']
     options = []
     for low, high in base_budgets_inr:
         low_local = low * exchange_rate
-        if high:
-            high_local = high * exchange_rate
-            options.append(f"{symbol}{low_local:,.0f} - {symbol}{high_local:,.0f}")
-        else:
-            options.append(f"{symbol}{low_local:,.0f}+")
+        if high: options.append(f"{symbol}{low_local:,.0f} - {symbol}{high * exchange_rate:,.0f}")
+        else: options.append(f"{symbol}{low_local:,.0f}+")
     return options
 
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
+    # Use a copy to avoid side effects
+    final_user_details = user_details.copy()
+
     try:
-        # --- PART 1: SEND PROPOSAL TO CLIENT (Existing Logic) ---
-        print("--- CLIENT PROPOSAL PROCESS STARTED ---")
+        print("--- CLIENT PROPOSAL PROCESS STARTED ---"); sys.stdout.flush()
         if custom_category_name and custom_category_data:
             data_source = custom_category_data
-            user_details['category'] = custom_category_name
+            # CRITICAL FIX: Ensure the custom name is used everywhere
+            final_user_details['category'] = custom_category_name
         else:
-            main_service = user_details['main_service']
-            sub_cat = user_details.get('sub_category', '_default')
+            main_service = final_user_details['main_service']
+            sub_cat = final_user_details.get('sub_category', '_default')
             data_source = services_data[main_service][sub_cat][category]
-        user_details['contact'] = user_details.get('phone', 'N/A')
-        update_lead_details(user_details["email"], user_details)
-        country_info = countries[user_details['country']]
-        proposal_costs = prepare_proposal_data(data_source, country_info, user_details['company_size'])
-        proposal_text = generate_descriptive_text(data_source, user_details.get('category'))
+        
+        final_user_details['contact'] = final_user_details.get('phone', 'N/A')
+        update_lead_details(final_user_details["email"], final_user_details)
+        country_info = countries[final_user_details['country']]
+        
+        proposal_costs = prepare_proposal_data(data_source, country_info, final_user_details['company_size'])
+        proposal_text = generate_descriptive_text(data_source, final_user_details.get('category'))
         if not proposal_text: raise ValueError("AI failed to generate text.")
+        
         output_dir = "proposals"; os.makedirs(output_dir, exist_ok=True)
-        project_name_slug = user_details['category'].replace(' ', '_').replace('/', '_')
-        client_pdf_filename = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        project_name_slug = final_user_details['category'].replace(' ', '_').replace('/', '_')
+        client_pdf_filename = f"Proposal_{final_user_details['company'].replace(' ', '_')}_{project_name_slug}.pdf"
         client_pdf_path = os.path.join(output_dir, client_pdf_filename)
-        create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, client_pdf_path)
+        
+        create_proposal_pdf(final_user_details, proposal_text, proposal_costs, country_info, client_pdf_path)
+        
         send_email_with_attachment(
-            receiver_email=user_details['email'],
-            subject=f"Your Personalized Proposal from Infinite Tech for {user_details['category']}",
-            body=f"Dear {user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Infinite Tech Team",
+            receiver_email=final_user_details['email'],
+            subject=f"Your Personalized Proposal from Infinite Tech for {final_user_details['category']}",
+            body=f"Dear {final_user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Infinite Tech Team",
             attachment_path=client_pdf_path
         )
-        print(f"--- CLIENT PROPOSAL SENT to {user_details['email']} ---")
-
-        # --- PART 2: SEND LEAD NOTIFICATION TO SALES (New Logic) ---
-        try:
-            print("--- SALES NOTIFICATION PROCESS STARTED ---")
-            # --- CHANGE THIS TO YOUR EMAIL FOR TESTING ---
-            sales_email = "saifahmedn2004@gmail.com" 
-            
-            sales_pdf_filename = f"Lead_Summary_{user_details['company'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
-            sales_pdf_path = os.path.join(output_dir, sales_pdf_filename)
-            create_lead_summary_pdf(user_details, sales_pdf_path)
-            send_email_with_attachment(
-                receiver_email=sales_email,
-                subject=f"New Chatbot Lead: {user_details.get('company', 'N/A')} - {user_details.get('category', 'N/A')}",
-                body=f"A new lead has been generated by the chatbot. Please find the summary attached.",
-                attachment_path=sales_pdf_path
-            )
-            print(f"--- SALES NOTIFICATION SENT to {sales_email} ---")
-        except Exception as e:
-            print(f"--- SALES NOTIFICATION FAILED: Could not send lead summary. Error: {e} ---"); sys.stdout.flush()
+        print(f"--- CLIENT PROPOSAL SENT to {final_user_details['email']} ---"); sys.stdout.flush()
 
     except Exception as e:
-        print(f"--- BACKGROUND TASK FAILED: CRITICAL ERROR in main proposal task: {e} ---"); sys.stdout.flush()
+        print(f"--- CRITICAL ERROR in client proposal task: {e} ---"); sys.stdout.flush()
+        return # Stop if the client proposal fails
+
+    # --- NEW ROBUST SALES NOTIFICATION BLOCK ---
+    try:
+        print("--- SALES NOTIFICATION PROCESS STARTED ---"); sys.stdout.flush()
+        sales_email = "saifahmedn2004@gmail.com"
+        sales_pdf_filename = f"Lead_Summary_{final_user_details['company'].replace(' ', '_')}.pdf"
+        sales_pdf_path = os.path.join(output_dir, sales_pdf_filename)
+        
+        print("Creating sales lead PDF..."); sys.stdout.flush()
+        create_lead_summary_pdf(final_user_details, sales_pdf_path)
+        print("Sales lead PDF created successfully."); sys.stdout.flush()
+        
+        print(f"Sending sales notification to {sales_email}..."); sys.stdout.flush()
+        send_email_with_attachment(
+            receiver_email=sales_email,
+            subject=f"New Chatbot Lead: {final_user_details.get('company', 'N/A')} - {final_user_details.get('category', 'N/A')}",
+            body="A new lead has been generated by the chatbot. Please find the summary attached.",
+            attachment_path=sales_pdf_path
+        )
+        print(f"--- SALES NOTIFICATION SENT to {sales_email} ---"); sys.stdout.flush()
+    except Exception as e:
+        print(f"--- SALES NOTIFICATION FAILED: Could not send lead summary. Error: {e} ---"); sys.stdout.flush()
+
 
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
     if previous_stage == "get_name": user_details.pop('name', None); return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)

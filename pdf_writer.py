@@ -2,7 +2,7 @@ from fpdf import FPDF
 import os
 from datetime import datetime
 
-COMPANY_EMAIL = "partha@infinitetechai.com"
+COMPANY_EMAIL = "saifahmedn2004@gmail.com"
 COMPANY_PHONE = "+91 9884777171"
 
 class PDF(FPDF):
@@ -11,7 +11,7 @@ class PDF(FPDF):
         self.set_text_color(255, 255, 255)
         self.set_font("DejaVu", "B", 16)
         self.cell(0, 12, "Personalized Development Proposal", ln=True, align="C", fill=True)
-        self.ln(10)
+        self.ln(5) # Reduced spacing
 
     def footer(self):
         self.set_y(-15)
@@ -36,24 +36,33 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
         pdf.add_font("DejaVu", "I", os.path.join(font_path, "DejaVuSans-Oblique.ttf"), uni=True)
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
+    
     pdf.section_title("Client & Project Overview")
     pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Date:"); pdf.set_font("DejaVu", "B", 11); pdf.cell(0, 7, datetime.now().strftime("%B %d, %Y"), ln=True)
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Company:"); pdf.set_font("DejaVu", "B", 11); pdf.cell(0, 7, user_details.get('company', 'N/A'), ln=True)
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Contact Person:"); pdf.set_font("DejaVu", "B", 11); pdf.cell(0, 7, user_details.get('name', 'N/A'), ln=True)
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Email:"); pdf.set_font("DejaVu", "B", 11); pdf.cell(0, 7, user_details.get('email', 'N/A'), ln=True)
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Contact Phone:"); pdf.set_font("DejaVu", "B", 11); pdf.cell(0, 7, user_details.get('contact', 'N/A'), ln=True)
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Project:"); pdf.set_font("DejaVu", "B", 11); pdf.cell(0, 7, user_details.get('category', 'N/A'), ln=True)
-    pdf.ln(4) # Reduced spacing
+    
+    # CRITICAL FIX: Use the final, correct project name
+    project_display_name = user_details.get('category', 'N/A')
+    
+    details = {
+        "Date": datetime.now().strftime("%B %d, %Y"),
+        "Company": user_details.get('company', 'N/A'),
+        "Contact Person": user_details.get('name', 'N/A'),
+        "Email": user_details.get('email', 'N/A'),
+        "Contact Phone": user_details.get('contact', 'N/A'),
+        "Project": project_display_name
+    }
+
+    for key, value in details.items():
+        pdf.set_font("DejaVu", "", 11)
+        pdf.cell(40, 7, f"{key}:")
+        pdf.set_font("DejaVu", "B", 11)
+        pdf.cell(0, 7, value, ln=True)
+
+    pdf.ln(4)
     pdf.section_title("Introduction")
     pdf.set_font("DejaVu", "", 11)
-    pdf.multi_cell(0, 6, proposal_text.get('introduction', '')) # Reduced line height
-    pdf.ln(4) # Reduced spacing
+    pdf.multi_cell(0, 6, proposal_text.get('introduction', ''))
+    pdf.ln(4)
     pdf.section_title("Estimated Cost Breakdown")
     pdf.set_font("DejaVu", "B", 10)
     pdf.set_fill_color(0, 51, 102); pdf.set_text_color(255, 255, 255)
@@ -70,7 +79,7 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.cell(60, 8, proposal_costs.get('discount_str', ''), 1, 1, "R")
     pdf.set_text_color(0); pdf.set_font("DejaVu", "B", 12)
     pdf.cell(130, 10, "Final Estimated Total", 1, 0, "R"); pdf.cell(60, 10, proposal_costs.get('final_total_str', ''), 1, 1, "R")
-    pdf.ln(6) # Reduced spacing
+    pdf.ln(4)
     pdf.section_title("Contact Us to Get Started")
     pdf.set_font("DejaVu", "", 10); pdf.set_text_color(0)
     pdf.cell(0, 6, f"Email: {COMPANY_EMAIL}", ln=True)

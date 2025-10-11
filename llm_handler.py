@@ -41,8 +41,8 @@ def generate_descriptive_text(category_data, custom_category_name=None):
         - Core Modules: {category_data.get('core_modules', 'Core functionality.')}
 
         Instructions:
-        1. Write a **brief and concise 'introduction' paragraph (3-4 sentences max)** for the '{category_name}'.
-        2. Write a 'scope_of_work' as a list of dictionaries, where each dict has a 'title' (module name) and a 'description'. If no core modules are listed, create 3-4 plausible ones based on the category.
+        1. Write a **very brief and concise 'introduction' paragraph (2-3 sentences max)** for the '{category_name}'. Keep it short to fit on one page.
+        2. Write a 'scope_of_work' as a list of dictionaries, where each dict has a 'title' and a 'description'. If no core modules are listed, create 3-4 plausible ones based on the category.
         3. Respond with a valid JSON object ONLY.
 
         JSON Format:
