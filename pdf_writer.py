@@ -2,8 +2,8 @@ from fpdf import FPDF
 import os
 from datetime import datetime
 
-COMPANY_EMAIL = "Partha@infinitetechai.com"
-COMPANY_PHONE = "+91 98847 77171"
+COMPANY_EMAIL = "sales@infinitecard.in"
+COMPANY_PHONE = "+91 9884777171"
 
 class PDF(FPDF):
     def header(self):
@@ -44,7 +44,6 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.section_title("Client & Project Overview")
     pdf.set_font("DejaVu", "", 11)
     
-    # --- BUG FIX: ADDED DATE TO THE PROPOSAL ---
     pdf.cell(40, 7, "Date:")
     pdf.set_font("DejaVu", "B", 11)
     pdf.cell(0, 7, datetime.now().strftime("%B %d, %Y"), ln=True)
@@ -117,3 +116,48 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
         pdf.output(output_path)
     except Exception as e:
         print(f"Error while saving PDF: {e}")
+
+
+# --- NEW FUNCTION TO CREATE A LEAD SUMMARY PDF ---
+def create_lead_summary_pdf(user_details, output_path):
+    pdf = FPDF()
+    font_path = os.path.join(os.path.dirname(__file__), "fonts")
+    if os.path.exists(os.path.join(font_path, "DejaVuSans.ttf")):
+        pdf.add_font("DejaVu", "", os.path.join(font_path, "DejaVuSans.ttf"), uni=True)
+        pdf.add_font("DejaVu", "B", os.path.join(font_path, "DejaVuSans-Bold.ttf"), uni=True)
+    else:
+        pdf.set_font("Arial", "B", 12)
+    
+    pdf.add_page()
+    pdf.set_font("DejaVu", "B", 16)
+    pdf.cell(0, 10, "New Lead Notification", 0, 1, 'C')
+    pdf.ln(10)
+
+    pdf.set_font("DejaVu", "", 11)
+    
+    # Define which details to include in the summary
+    details_to_include = {
+        "Date": datetime.now().strftime("%B %d, %Y"),
+        "Contact Person": user_details.get('name', 'N/A'),
+        "Company": user_details.get('company', 'N/A'),
+        "Email": user_details.get('email', 'N/A'),
+        "Phone": user_details.get('phone', 'N/A'),
+        "Country": user_details.get('country', 'N/A'),
+        "Company Size": user_details.get('company_size', 'N/A'),
+        "Budget": user_details.get('budget', 'N/A'),
+        "Service": user_details.get('main_service', 'N/A'),
+        "Project": user_details.get('category', 'N/A'),
+        "Additional Details": user_details.get('description', 'N/A')
+    }
+
+    for key, value in details_to_include.items():
+        pdf.set_font("DejaVu", "B", 11)
+        pdf.cell(50, 8, f"{key}:")
+        pdf.set_font("DejaVu", "", 11)
+        pdf.multi_cell(0, 8, str(value), ln=True)
+        pdf.ln(2)
+
+    try:
+        pdf.output(output_path)
+    except Exception as e:
+        print(f"Error while saving lead summary PDF: {e}")
