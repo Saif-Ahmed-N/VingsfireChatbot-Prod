@@ -1,3 +1,5 @@
+# main.py
+
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -13,11 +15,10 @@ from excel_handler import load_service_data
 from country_data import countries
 from proposal_logic import prepare_proposal_data
 from llm_handler import generate_descriptive_text, get_general_response, estimate_custom_service_cost
-from pdf_writer import create_proposal_pdf
+# Update import to include the new sales PDF function
+from pdf_writer import create_proposal_pdf, create_sales_lead_pdf # <--- MODIFIED IMPORT
 from mongo_handler import save_lead, update_lead_details
 from utils import send_email_with_attachment
-
-SALES_TEAM_EMAIL = "saifahmedn2004@gmail.com"
 
 app = FastAPI(
     title="Infinite Tech AI Proposal API",
@@ -42,6 +43,7 @@ if not services_data:
     raise RuntimeError("FATAL: Could not load service data.")
 
 BACK_COMMAND = "__GO_BACK__"
+SALES_TEAM_EMAIL = "sales@yourcompany.com"  # <--- Ensure this is correct
 
 class ChatRequest(BaseModel):
     stage: str
@@ -74,8 +76,6 @@ def generate_local_budget_options(country_info):
             options.append(f"{symbol}{low_local:,.0f}+")
     return options
 
-# main.py
-
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
     try:
         if custom_category_name and custom_category_data:
@@ -87,7 +87,7 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
             data_source = services_data[main_service][sub_cat][category]
         
         user_details['contact'] = user_details.get('phone', 'N/A')
-        update_lead_details(user_details["email"], user_details)
+        update_lead_details(user_details["email"], user_details) # Ensure user_details is updated in DB
         
         country_info = countries[user_details['country']]
         proposal_costs = prepare_proposal_data(data_source, country_info, user_details['company_size'])
@@ -95,54 +95,54 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         if not proposal_text: raise ValueError("AI failed to generate text.")
         
         output_dir = "proposals"; os.makedirs(output_dir, exist_ok=True)
-        project_name_slug = user_details['category'].replace(' ', '_').replace('/', '_')
-        file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d')}.pdf"
-        output_path = os.path.join(output_dir, file_name)
         
-        create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path)
+        # --- CLIENT PROPOSAL PDF GENERATION ---
+        project_name_slug = user_details.get('custom_category_name', user_details['category']).replace(' ', '_').replace('/', '_')
+        client_pdf_file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_client.pdf"
+        client_pdf_path = os.path.join(output_dir, client_pdf_file_name)
         
-        # --- 1. Email to Client (Existing Code) ---
+        create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, client_pdf_path)
+        
+        # --- SEND EMAIL TO CLIENT ---
         send_email_with_attachment(
             receiver_email=user_details['email'],
-            subject=f"Your Personalized Proposal from Infinite Tech for {user_details['category']}",
+            subject=f"Your Personalized Proposal from Infinite Tech for {user_details.get('custom_category_name', user_details['category'])}",
             body=f"Dear {user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Infinite Tech Team",
-            attachment_path=output_path
+            attachment_path=client_pdf_path
         )
-        print(f"--- Proposal sent to client {user_details['email']} ---")
+        print(f"--- Client proposal sent to {user_details['email']} ---")
 
-        # --- 2. NEW: Email to Sales Team ---
-        sales_subject = f"New Lead & Proposal: {user_details['company']} - {user_details.get('custom_category_name', user_details['category'])}"
+        # --- NEW SALES LEAD PDF GENERATION ---
+        sales_pdf_file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_sales_lead.pdf"
+        sales_pdf_path = os.path.join(output_dir, sales_pdf_file_name)
         
-        # Conditionally add the custom service line
-        custom_service_line = ""
-        if user_details.get('custom_category_name'):
-            custom_service_line = f"- Custom Service Request: {user_details.get('custom_category_name')}\n"
-
+        create_sales_lead_pdf(user_details, sales_pdf_path) # <--- Call NEW function
+        
+        # --- SEND EMAIL TO SALES TEAM ---
+        sales_subject = f"NEW LEAD: {user_details['company']} - {user_details.get('custom_category_name', user_details['category'])}"
         sales_body = f"""
-A new proposal was automatically generated and sent to a client.
+Dear Sales Team,
 
-LEAD DETAILS:
-- Name: {user_details.get('name', 'N/A')}
-- Company: {user_details.get('company', 'N/A')}
-- Email: {user_details.get('email', 'N/A')}
-- Phone: {user_details.get('phone', 'N/A')}
-- Country: {user_details.get('country', 'N/A')}
-- Company Size: {user_details.get('company_size', 'N/A')}
-- Stated Budget: {user_details.get('budget', 'N/A')}
-{custom_service_line}- Additional Notes: {user_details.get('description', 'No additional features requested.')}
+A new lead has generated a proposal through the AI chatbot.
 
-The PDF proposal sent to the client is attached for your reference.
+Please find the detailed lead summary attached in PDF format. This PDF contains all the information collected from the client.
+
+The client's proposal has also been sent to their email: {user_details['email']}.
+
+Best regards,
+Infinite Tech AI Assistant
         """
         send_email_with_attachment(
             receiver_email=SALES_TEAM_EMAIL,
             subject=sales_subject,
             body=sales_body.strip(),
-            attachment_path=output_path
+            attachment_path=sales_pdf_path # <--- Attach the NEW sales PDF
         )
-        print(f"--- Sales team notified at {SALES_TEAM_EMAIL} ---")
+        print(f"--- Sales team notified at {SALES_TEAM_EMAIL} with lead summary PDF ---")
 
     except Exception as e:
         print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---")
+
     finally:
         sys.stdout.flush()
 

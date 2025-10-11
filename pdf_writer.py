@@ -1,3 +1,5 @@
+# pdf_writer.py
+
 from fpdf import FPDF
 import os
 from datetime import datetime
@@ -7,10 +9,14 @@ COMPANY_PHONE = "+91 98847 77171"
 
 class PDF(FPDF):
     def header(self):
-        self.set_fill_color(0, 51, 102)
-        self.set_text_color(255, 255, 255)
+        self.set_fill_color(0, 51, 102) # Dark blue
+        self.set_text_color(255, 255, 255) # White text
         self.set_font("DejaVu", "B", 16)
-        self.cell(0, 12, "Personalized Development Proposal", ln=True, align="C", fill=True)
+        # Use different title for sales lead PDF
+        if self.page_no() == 1 and hasattr(self, 'pdf_type') and self.pdf_type == 'sales_lead':
+            self.cell(0, 12, "NEW LEAD: Client Request Summary", ln=True, align="C", fill=True)
+        else:
+            self.cell(0, 12, "Personalized Development Proposal", ln=True, align="C", fill=True)
         self.ln(10)
 
     def footer(self):
@@ -21,42 +27,38 @@ class PDF(FPDF):
 
     def section_title(self, title):
         self.set_font("DejaVu", "B", 12)
-        self.set_fill_color(230, 230, 230)
+        self.set_fill_color(230, 230, 230) # Light grey
+        self.set_text_color(0, 0, 0) # Black text
         self.cell(0, 8, title, ln=True, fill=True, align="L")
         self.ln(4)
 
-def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path):
-    pdf = PDF()
-
+# Function to setup fonts (reused by both PDF generation functions)
+def setup_fonts(pdf_instance):
     font_path = os.path.join(os.path.dirname(__file__), "fonts") 
-    
     if not os.path.exists(os.path.join(font_path, "DejaVuSans.ttf")):
         print("WARNING: DejaVu fonts not found. Using Arial.")
-        pdf.set_font("Arial", "B", 12) 
+        pdf_instance.add_font("Arial", "", "Arial.ttf", uni=True) # Ensure Arial is registered for fallback
+        pdf_instance.add_font("Arial", "B", "Arialbd.ttf", uni=True)
+        pdf_instance.add_font("Arial", "I", "Arial.ttf", uni=True) # Assuming Arial.ttf has italics too
+        pdf_instance.set_font("Arial", "B", 12)
     else:
-        pdf.add_font("DejaVu", "", os.path.join(font_path, "DejaVuSans.ttf"), uni=True)
-        pdf.add_font("DejaVu", "B", os.path.join(font_path, "DejaVuSans-Bold.ttf"), uni=True)
-        pdf.add_font("DejaVu", "I", os.path.join(font_path, "DejaVuSans-Oblique.ttf"), uni=True)
+        pdf_instance.add_font("DejaVu", "", os.path.join(font_path, "DejaVuSans.ttf"), uni=True)
+        pdf_instance.add_font("DejaVu", "B", os.path.join(font_path, "DejaVuSans-Bold.ttf"), uni=True)
+        pdf_instance.add_font("DejaVu", "I", os.path.join(font_path, "DejaVuSans-Oblique.ttf"), uni=True)
 
+
+def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path):
+    pdf = PDF()
+    pdf.pdf_type = 'client_proposal' # Identify PDF type for header
+    setup_fonts(pdf) # Setup fonts
+    pdf.set_auto_page_break(auto=True, margin=15) # Adjust margin if needed
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_text_color(0,0,0) # Reset text color to black
 
+    # --- Client & Project Overview ---
     pdf.section_title("Client & Project Overview")
     pdf.set_font("DejaVu", "", 11)
-
-    # Determine the project name to display
-
-    project_name = user_details.get('custom_category_name', user_details.get('category', 'N/A'))
     
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(40, 7, "Project:")
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 7, project_name, ln=True)
-    # --- MODIFICATION END ---
-
-    pdf.ln(8)
-    
-    # --- BUG FIX: ADDED DATE TO THE PROPOSAL ---
     pdf.cell(40, 7, "Date:")
     pdf.set_font("DejaVu", "B", 11)
     pdf.cell(0, 7, datetime.now().strftime("%B %d, %Y"), ln=True)
@@ -81,17 +83,26 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.set_font("DejaVu", "B", 11)
     pdf.cell(0, 7, user_details.get('contact', 'N/A'), ln=True)
 
+    # --- FIX: Only one Project row, with custom service in brackets ---
     pdf.set_font("DejaVu", "", 11)
     pdf.cell(40, 7, "Project:")
     pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 7, user_details.get('category', 'N/A'), ln=True)
+    project_display_name = user_details.get('category', 'N/A')
+    custom_name = user_details.get('custom_category_name')
+    if custom_name and project_display_name == "Custom Service": # Check if it's the generic "Custom Service" category
+        project_display_name = f"Others ({custom_name})"
+    elif custom_name and project_display_name == "Others": # If it's explicitly "Others" category
+        project_display_name = f"Others ({custom_name})"
+    pdf.cell(0, 7, project_display_name, ln=True)
     pdf.ln(8)
 
+    # --- Introduction ---
     pdf.section_title("Introduction")
     pdf.set_font("DejaVu", "", 11)
     pdf.multi_cell(0, 7, proposal_text.get('introduction', ''))
     pdf.ln(8)
     
+    # --- Estimated Cost Breakdown ---
     pdf.section_title("Estimated Cost Breakdown")
     pdf.set_font("DejaVu", "B", 10)
     pdf.set_fill_color(0, 51, 102)
@@ -105,20 +116,22 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
         pdf.cell(130, 8, item.get('item', ''), 1, 0, "L")
         pdf.cell(60, 8, item.get('cost', ''), 1, 1, "R")
     
+    # --- FIX: Ensure enough spacing before footer for totals ---
     pdf.set_font("DejaVu", "B", 10)
     pdf.cell(130, 8, "Subtotal", 1, 0, "R")
     pdf.cell(60, 8, proposal_costs.get('subtotal_str', ''), 1, 1, "R")
     
-    pdf.set_text_color(34, 139, 34)
+    pdf.set_text_color(34, 139, 34) # Green for discount
     pdf.cell(130, 8, f"Volume Discount ({proposal_costs.get('discount_rate_str', '0%')})", 1, 0, "R")
     pdf.cell(60, 8, proposal_costs.get('discount_str', ''), 1, 1, "R")
     
-    pdf.set_text_color(0)
+    pdf.set_text_color(0) # Reset to black
     pdf.set_font("DejaVu", "B", 12)
     pdf.cell(130, 10, "Final Estimated Total", 1, 0, "R")
     pdf.cell(60, 10, proposal_costs.get('final_total_str', ''), 1, 1, "R")
-    pdf.ln(10)
+    pdf.ln(15) # Increased spacing after total
 
+    # --- Contact Us to Get Started ---
     pdf.section_title("Contact Us to Get Started")
     pdf.set_font("DejaVu", "", 10)
     pdf.set_text_color(0)
@@ -128,4 +141,95 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     try:
         pdf.output(output_path)
     except Exception as e:
-        print(f"Error while saving PDF: {e}")
+        print(f"Error while saving client proposal PDF: {e}")
+
+# --- NEW FUNCTION FOR SALES LEAD PDF ---
+def create_sales_lead_pdf(user_details, output_path):
+    pdf = PDF()
+    pdf.pdf_type = 'sales_lead' # Identify PDF type for header
+    setup_fonts(pdf) # Setup fonts
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_text_color(0,0,0) # Reset text color to black
+
+    pdf.section_title(f"New Lead: {user_details.get('company', 'N/A')}")
+    pdf.set_font("DejaVu", "", 11)
+    
+    pdf.cell(50, 8, "Date of Inquiry:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, datetime.now().strftime("%B %d, %Y %H:%M:%S"), ln=True)
+    pdf.ln(2)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Contact Person:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, user_details.get('name', 'N/A'), ln=True)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Company Name:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, user_details.get('company', 'N/A'), ln=True)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Company Size:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, user_details.get('company_size', 'N/A'), ln=True)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Email:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, user_details.get('email', 'N/A'), ln=True)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Phone Number:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, user_details.get('phone', 'N/A'), ln=True)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Country:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, user_details.get('country', 'N/A'), ln=True)
+    pdf.ln(5)
+
+    pdf.section_title("Project Details")
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Service Type:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    main_service_display = user_details.get('main_service', 'N/A')
+    sub_category_display = user_details.get('sub_category')
+    if sub_category_display and sub_category_display != '_default':
+        main_service_display += f" > {sub_category_display}"
+    pdf.cell(0, 8, main_service_display, ln=True)
+
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Specific Project:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    project_name_sales = user_details.get('category', 'N/A')
+    custom_name = user_details.get('custom_category_name')
+    if custom_name: # For sales, always show custom name if present
+        project_name_sales = custom_name
+    pdf.multi_cell(0, 8, project_name_sales)
+    
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(50, 8, "Client's Budget:", 0, 0, 'L')
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 8, user_details.get('budget', 'N/A'), ln=True)
+    pdf.ln(5)
+
+    pdf.section_title("Additional Client Notes / Requirements")
+    pdf.set_font("DejaVu", "", 11)
+    description = user_details.get('description', 'No additional features requested.')
+    if description == "No additional features requested." and user_details.get('custom_category_name') and user_details.get('category') == "Custom Service":
+        description = f"Client requested a custom service: {user_details['custom_category_name']}. No further details provided."
+    pdf.multi_cell(0, 7, description)
+    pdf.ln(5)
+
+    # Add a final prompt for the sales team
+    pdf.set_font("DejaVu", "I", 10)
+    pdf.set_text_color(100)
+    pdf.multi_cell(0, 5, "This summary includes all information collected from the client through the AI chatbot. The full proposal PDF (which was also sent to the client) is attached to this email.")
+
+    try:
+        pdf.output(output_path)
+    except Exception as e:
+        print(f"Error while saving sales lead PDF: {e}")
