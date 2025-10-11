@@ -2,7 +2,7 @@ from fpdf import FPDF
 import os
 
 # --- Define Constants for Company Information ---
-COMPANY_EMAIL = "sales@infinitecard.in"
+COMPANY_EMAIL = "Partha@infinitetechai.com"
 COMPANY_PHONE = "+91 98847 77171" # Your constant company phone number
 
 class PDF(FPDF):

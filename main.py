@@ -26,11 +26,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://vingsfire-chatbot-prod.vercel.app", # Your production frontend
+        "https://vingsfire-chatbot-prod.vercel.app",  # Your Vercel frontend
         # Add any other frontend URLs here
-        "http://127.0.0.1:5500", # Local testing
-        "http://localhost:5500",  # Local testing
-        "http://infinitetechai.com"
+        "http://127.0.0.1:5500",  # Local testing
+        "http://localhost:5500"   # Local testing
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -60,9 +59,8 @@ class ProposalRequest(BaseModel):
     custom_category_name: str | None = None
     custom_category_data: Dict[str, Any] | None = None
 
-# --- CHANGE 1: UPDATED BUDGET RANGES ---
 def generate_local_budget_options(country_info):
-    # New budget ranges in INR
+    # --- UPDATED BUDGET RANGES ---
     base_budgets_inr = [(100000, 400000), (500000, 800000), (800000, 1000000), (1000000, None)]
     exchange_rate = country_info['exchange_rate_from_inr']
     symbol = country_info['currency_symbol']
@@ -78,40 +76,41 @@ def generate_local_budget_options(country_info):
 
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
     try:
-        print("--- BACKGROUND TASK STARTED ---"); sys.stdout.flush()
+        # If a custom name exists, ensure it's used as the main category for the proposal
+        if custom_category_name:
+            user_details['category'] = custom_category_name
+
         user_details['contact'] = user_details.get('phone', 'N/A')
         update_lead_details(user_details["email"], user_details)
         if custom_category_name:
             category_data = custom_category_data
-            user_details['category'] = custom_category_name
         else:
             main_service = user_details['main_service']
             sub_cat = user_details.get('sub_category', '_default')
             category_data = services_data[main_service][sub_cat][category]
         country_info = countries[user_details['country']]
-        print("STEP 1: Preparing proposal data..."); sys.stdout.flush()
+        
         proposal_costs = prepare_proposal_data(category_data, country_info, user_details['company_size'])
-        print("STEP 2: Generating descriptive text with AI..."); sys.stdout.flush()
         proposal_text = generate_descriptive_text(category_data, user_details.get('category'))
         if not proposal_text: raise ValueError("AI failed to generate text.")
+        
         output_dir = "proposals"; os.makedirs(output_dir, exist_ok=True)
         project_name_slug = user_details['category'].replace(' ', '_').replace('/', '_')
         file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d')}.pdf"
         output_path = os.path.join(output_dir, file_name)
-        print(f"STEP 3: Creating PDF at {output_path}..."); sys.stdout.flush()
+        
         create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path)
-        print("STEP 4: Attempting to send email..."); sys.stdout.flush()
         send_email_with_attachment(
             receiver_email=user_details['email'],
             subject=f"Your Personalized Proposal from Infinite Tech for {user_details['category']}",
             body=f"Dear {user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Infinite Tech Team",
             attachment_path=output_path
         )
-        print(f"--- BACKGROUND TASK SUCCEEDED: Successfully sent proposal to {user_details['email']} ---"); sys.stdout.flush()
     except Exception as e:
         print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---"); sys.stdout.flush()
 
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
+    # This function remains unchanged, but is included for completeness
     if previous_stage == "get_name":
         user_details.pop('name', None)
         return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)
@@ -226,18 +225,29 @@ async def handle_chat(request: ChatRequest):
         ai_estimate = estimate_custom_service_cost(user_details['custom_category_name'], main_service, all_examples)
         if ai_estimate: return ChatResponse(next_stage="get_optional_features", bot_message="I've prepared a preliminary estimate. Any other specific features to add? (Optional)", user_details=user_details, ui_elements={"type": "store_data", "data": ai_estimate})
         else: return ChatResponse(next_stage="get_specific_service", bot_message="I'm sorry, I couldn't generate an estimate. Please try rephrasing or select an option.", user_details=user_details)
-    
-    # --- CHANGE 2: UPDATED CONFIRMATION SUMMARY ---
+
+    # --- UPDATED CONFIRMATION SUMMARY ---
     elif stage == "get_optional_features":
         user_details['description'] = user_input or "No additional features requested."
+        
+        # Determine the project name (standard or custom)
         project_name = user_details.get('custom_category_name', user_details.get('category'))
         
+        # Build the summary string
+        summary = (
+            f"Please confirm your details:\n"
+            f"- **Email:** {user_details['email']}\n"
+            f"- **Phone:** {user_details['phone']}\n"
+            f"- **Company:** {user_details['company']}\n"
+            f"- **Project:** {project_name}"
+        )
+
         # Conditionally add the additional details to the summary
-        additional_info = ""
         if user_details.get('description') and user_details['description'] != "No additional features requested.":
-            additional_info = f"\n- **Additional Details:** {user_details['description']}"
+            summary += f"\n- **Additional Details:** {user_details['description']}"
             
-        summary = f"Please confirm your details:\n- **Email:** {user_details['email']}\n- **Phone:** {user_details['phone']}\n- **Company:** {user_details['company']}\n- **Project:** {project_name}{additional_info}\n\nShall I generate and email the full proposal now?"
+        summary += "\n\nShall I generate and email the full proposal now?"
+        
         return ChatResponse(next_stage="confirm_proposal", bot_message=summary, user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Yes, Send Proposal", "No, I Have Questions"]})
     
     elif stage == "confirm_proposal":
