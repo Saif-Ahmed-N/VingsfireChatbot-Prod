@@ -43,6 +43,18 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
 
     pdf.section_title("Client & Project Overview")
     pdf.set_font("DejaVu", "", 11)
+
+    # Determine the project name to display
+
+    project_name = user_details.get('custom_category_name', user_details.get('category', 'N/A'))
+    
+    pdf.set_font("DejaVu", "", 11)
+    pdf.cell(40, 7, "Project:")
+    pdf.set_font("DejaVu", "B", 11)
+    pdf.cell(0, 7, project_name, ln=True)
+    # --- MODIFICATION END ---
+
+    pdf.ln(8)
     
     # --- BUG FIX: ADDED DATE TO THE PROPOSAL ---
     pdf.cell(40, 7, "Date:")

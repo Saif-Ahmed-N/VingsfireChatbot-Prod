@@ -17,6 +17,8 @@ from pdf_writer import create_proposal_pdf
 from mongo_handler import save_lead, update_lead_details
 from utils import send_email_with_attachment
 
+SALES_TEAM_EMAIL = "saifahmedn2004@gmail.com"
+
 app = FastAPI(
     title="Infinite Tech AI Proposal API",
     description="API for the chatbot to handle conversations and generate proposals.",
@@ -72,6 +74,8 @@ def generate_local_budget_options(country_info):
             options.append(f"{symbol}{low_local:,.0f}+")
     return options
 
+# main.py
+
 def generate_and_send_proposal_task(user_details, category, custom_category_name, custom_category_data):
     try:
         if custom_category_name and custom_category_data:
@@ -81,25 +85,66 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
             main_service = user_details['main_service']
             sub_cat = user_details.get('sub_category', '_default')
             data_source = services_data[main_service][sub_cat][category]
+        
         user_details['contact'] = user_details.get('phone', 'N/A')
         update_lead_details(user_details["email"], user_details)
+        
         country_info = countries[user_details['country']]
         proposal_costs = prepare_proposal_data(data_source, country_info, user_details['company_size'])
         proposal_text = generate_descriptive_text(data_source, user_details.get('category'))
         if not proposal_text: raise ValueError("AI failed to generate text.")
+        
         output_dir = "proposals"; os.makedirs(output_dir, exist_ok=True)
         project_name_slug = user_details['category'].replace(' ', '_').replace('/', '_')
         file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d')}.pdf"
         output_path = os.path.join(output_dir, file_name)
+        
         create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, output_path)
+        
+        # --- 1. Email to Client (Existing Code) ---
         send_email_with_attachment(
             receiver_email=user_details['email'],
             subject=f"Your Personalized Proposal from Infinite Tech for {user_details['category']}",
             body=f"Dear {user_details['name']},\n\nAs requested, please find your detailed project proposal attached.\n\nBest Regards,\nThe Infinite Tech Team",
             attachment_path=output_path
         )
+        print(f"--- Proposal sent to client {user_details['email']} ---")
+
+        # --- 2. NEW: Email to Sales Team ---
+        sales_subject = f"New Lead & Proposal: {user_details['company']} - {user_details.get('custom_category_name', user_details['category'])}"
+        
+        # Conditionally add the custom service line
+        custom_service_line = ""
+        if user_details.get('custom_category_name'):
+            custom_service_line = f"- Custom Service Request: {user_details.get('custom_category_name')}\n"
+
+        sales_body = f"""
+A new proposal was automatically generated and sent to a client.
+
+LEAD DETAILS:
+- Name: {user_details.get('name', 'N/A')}
+- Company: {user_details.get('company', 'N/A')}
+- Email: {user_details.get('email', 'N/A')}
+- Phone: {user_details.get('phone', 'N/A')}
+- Country: {user_details.get('country', 'N/A')}
+- Company Size: {user_details.get('company_size', 'N/A')}
+- Stated Budget: {user_details.get('budget', 'N/A')}
+{custom_service_line}- Additional Notes: {user_details.get('description', 'No additional features requested.')}
+
+The PDF proposal sent to the client is attached for your reference.
+        """
+        send_email_with_attachment(
+            receiver_email=SALES_TEAM_EMAIL,
+            subject=sales_subject,
+            body=sales_body.strip(),
+            attachment_path=output_path
+        )
+        print(f"--- Sales team notified at {SALES_TEAM_EMAIL} ---")
+
     except Exception as e:
-        print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---"); sys.stdout.flush()
+        print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---")
+    finally:
+        sys.stdout.flush()
 
 def go_back_to_stage(previous_stage: str, user_details: Dict[str, Any]) -> ChatResponse:
     if previous_stage == "get_name": user_details.pop('name', None); return ChatResponse(next_stage="get_name", bot_message="Hello! I am the Infinite Tech AI assistant. To get started, please tell me your full name.", user_details=user_details)
