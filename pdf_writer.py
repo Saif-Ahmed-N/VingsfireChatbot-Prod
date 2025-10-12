@@ -152,84 +152,56 @@ def create_sales_lead_pdf(user_details, output_path):
     setup_fonts(pdf) # Setup fonts
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_text_color(0,0,0) # Reset text color to black
+    pdf.set_text_color(0, 0, 0) # Reset text color to black
 
-    pdf.section_title(f"New Lead: {user_details.get('company', 'N/A')}")
-    pdf.set_font("DejaVu", "", 11)
-    
-    pdf.cell(50, 8, "Date of Inquiry:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, datetime.now().strftime("%B %d, %Y %H:%M:%S"), ln=True)
-    pdf.ln(2)
+    # --- Main Title and Timestamp ---
+    pdf.section_title(f"New Lead Summary: {user_details.get('company', 'N/A')}")
+    pdf.set_font("DejaVu", "I", 10)
+    pdf.set_text_color(128)
+    pdf.cell(0, 6, f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}", ln=True, align='L')
+    pdf.ln(8)
 
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Contact Person:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, user_details.get('name', 'N/A'), ln=True)
+    # --- Structured Two-Column Layout ---
+    def add_detail_row(label, value):
+        """Helper function to create a clean key-value row."""
+        pdf.set_font("DejaVu", "B", 11)
+        pdf.cell(50, 8, label, 0, 0, 'L')
+        pdf.set_font("DejaVu", "", 11)
+        # Use multi_cell for the value to allow text wrapping
+        pdf.multi_cell(0, 8, value, 0, 'L')
+        pdf.ln(1) # Add a tiny space between rows
 
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Company Name:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, user_details.get('company', 'N/A'), ln=True)
+    # --- Client & Company Information Section ---
+    pdf.section_title("Client & Company Information")
+    add_detail_row("Contact Person:", user_details.get('name', 'N/A'))
+    add_detail_row("Company Name:", user_details.get('company', 'N/A'))
+    add_detail_row("Email Address:", user_details.get('email', 'N/A'))
+    add_detail_row("Phone Number:", user_details.get('phone', 'N/A'))
+    add_detail_row("Company Size:", user_details.get('company_size', 'N/A'))
+    add_detail_row("Country:", user_details.get('country', 'N/A'))
+    pdf.ln(8)
 
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Company Size:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, user_details.get('company_size', 'N/A'), ln=True)
-
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Email:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, user_details.get('email', 'N/A'), ln=True)
-
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Phone Number:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, user_details.get('phone', 'N/A'), ln=True)
-
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Country:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, user_details.get('country', 'N/A'), ln=True)
-    pdf.ln(5)
-
+    # --- Project Details Section ---
     pdf.section_title("Project Details")
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Service Type:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
     main_service_display = user_details.get('main_service', 'N/A')
     sub_category_display = user_details.get('sub_category')
     if sub_category_display and sub_category_display != '_default':
         main_service_display += f" > {sub_category_display}"
-    pdf.cell(0, 8, main_service_display, ln=True)
-
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Specific Project:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    project_name_sales = user_details.get('category', 'N/A')
-    custom_name = user_details.get('custom_category_name')
-    if custom_name: # For sales, always show custom name if present
-        project_name_sales = custom_name
-    pdf.multi_cell(0, 8, project_name_sales)
     
-    pdf.set_font("DejaVu", "", 11)
-    pdf.cell(50, 8, "Client's Budget:", 0, 0, 'L')
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(0, 8, user_details.get('budget', 'N/A'), ln=True)
-    pdf.ln(5)
+    # For sales, always show the custom name if it exists, as it's more specific.
+    project_name_sales = user_details.get('custom_category_name') or user_details.get('category', 'N/A')
 
-    pdf.section_title("Additional Client Notes / Requirements")
+    add_detail_row("Service Category:", main_service_display)
+    add_detail_row("Specific Request:", project_name_sales)
+    add_detail_row("Stated Budget:", user_details.get('budget', 'N/A'))
+    pdf.ln(8)
+    
+    # --- Additional Client Notes Section ---
+    pdf.section_title("Additional Client Notes")
     pdf.set_font("DejaVu", "", 11)
     description = user_details.get('description', 'No additional features requested.')
-    if description == "No additional features requested." and user_details.get('custom_category_name') and user_details.get('category') == "Custom Service":
-        description = f"Client requested a custom service: {user_details['custom_category_name']}. No further details provided."
-    pdf.multi_cell(0, 7, description)
+    pdf.multi_cell(0, 7, f'"{description}"', border=0, align='L') # Put notes in quotes
     pdf.ln(5)
-
-    # Add a final prompt for the sales team
-    pdf.set_font("DejaVu", "I", 10)
-    pdf.set_text_color(100)
-    pdf.multi_cell(0, 5, "This summary includes all information collected from the client through the AI chatbot. The full proposal PDF (which was also sent to the client) is attached to this email.")
 
     try:
         pdf.output(output_path)
