@@ -43,7 +43,7 @@ if not services_data:
     raise RuntimeError("FATAL: Could not load service data.")
 
 BACK_COMMAND = "__GO_BACK__"
-SALES_TEAM_EMAIL = "saifahmedn200@gmail.com"  # <--- Ensure this is correct
+SALES_TEAM_EMAIL = "saifahmedn2004@gmail.com"  # <--- Ensure this is correct
 
 class ChatRequest(BaseModel):
     stage: str
