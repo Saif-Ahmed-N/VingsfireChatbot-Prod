@@ -5,7 +5,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const goBackButton = document.getElementById('go-back-button');
     const chatWidget = document.getElementById('chat-widget');
     const closeWidgetButton = document.getElementById('close-widget-button');
-    const chatbotHeaderIcon = document.getElementById('chatbot-header-icon'); // New reference
+    const chatbotHeaderIcon = document.getElementById('chatbot-header-icon');
 
     const handleGoBack = () => {
         userInput.disabled = true;
@@ -46,7 +46,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     let lastMessageElement = null;
 
-    // UPDATED FUNCTION TO SWAP ICONS IN HEADER
     const updateGoBackButton = () => {
         if (chatState.user_details.stage_history && chatState.user_details.stage_history.length > 0) {
             goBackButton.classList.remove('hidden');
@@ -212,7 +211,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 container.remove();
                 break;
             case 'file_upload':
-                renderFileUpload(container);
+                // *** CHANGE 1: Pass the 'elements' object to the function ***
+                renderFileUpload(container, elements);
                 break;
         }
         scrollToLastElement();
@@ -239,7 +239,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             container.appendChild(button);
         });
     };
-    
+
     const renderPhoneForm = (countryOptions, container) => {
         container.className = 'bg-white p-4 rounded-lg shadow-md mb-4 border border-gray-200';
         const form = document.createElement('form');
@@ -273,7 +273,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
         container.appendChild(form);
     };
 
-    const renderFileUpload = (container) => {
+    // *** CHANGE 2: Replace the entire renderFileUpload function ***
+    const renderFileUpload = (container, uiData) => {
         container.className = 'bg-white p-4 rounded-lg shadow-md mb-4 border border-gray-200';
         container.innerHTML = `
             <div id="file-drop-zone" class="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition">
@@ -283,19 +284,51 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 <input id="file-upload" type="file" class="hidden" accept=".pdf,.doc,.docx"/>
             </div>
         `;
+
         const dropZone = container.querySelector('#file-drop-zone');
         const fileInput = container.querySelector('#file-upload');
-        const handleFile = (file) => {
-            if (file) {
+
+        const handleFile = async (file) => {
+            if (!file) return;
+
+            container.innerHTML = `
+                <div class="flex items-center justify-center text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-sm font-medium text-blue-700">Uploading: ${file.name}...</p>
+                </div>
+            `;
+
+            const formData = new FormData();
+            formData.append('resume', file);
+            formData.append('email', uiData.user_email);
+
+            try {
+                const response = await fetch(`${API_URL}${uiData.upload_to}`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('File upload failed.');
+                }
+
+                console.log("Resume uploaded successfully to the backend.");
+                setTimeout(() => handleUserMessage(`Uploaded: ${file.name}`, 'file'), 500);
+
+            } catch (error) {
+                console.error("Error uploading resume:", error);
                 container.innerHTML = `
-                    <div class="flex items-center justify-center text-center p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <svg class="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <p class="text-sm font-medium text-green-700">Selected: ${file.name}</p>
+                    <div class="flex items-center justify-center text-center p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p class="text-sm font-medium text-red-700">Upload failed. Please try again.</p>
                     </div>
                 `;
-                setTimeout(() => handleUserMessage(`Uploaded: ${file.name}`, 'file'), 1500);
+                setTimeout(() => renderFileUpload(container, uiData), 3000);
             }
         };
+
         dropZone.onclick = () => fileInput.click();
         dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-blue-500', 'bg-blue-50'); };
         dropZone.ondragleave = () => dropZone.classList.remove('border-blue-500', 'bg-blue-50');

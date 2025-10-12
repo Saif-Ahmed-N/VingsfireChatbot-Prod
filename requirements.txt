@@ -13,3 +13,4 @@ python-dotenv
 certifi
 sendgrid
 dnspython
+python-multipart

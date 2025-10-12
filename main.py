@@ -1,6 +1,7 @@
 # main.py
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Form
+import shutil
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, List
@@ -15,9 +16,8 @@ from excel_handler import load_service_data
 from country_data import countries
 from proposal_logic import prepare_proposal_data
 from llm_handler import generate_descriptive_text, get_general_response, estimate_custom_service_cost
-# Update import to include the new sales PDF function
-from pdf_writer import create_proposal_pdf, create_sales_lead_pdf # <--- MODIFIED IMPORT
-from mongo_handler import save_lead, update_lead_details
+from pdf_writer import create_proposal_pdf, create_sales_lead_pdf
+from mongo_handler import save_lead, update_lead_details, update_lead_with_resume
 from utils import send_email_with_attachment
 
 app = FastAPI(
@@ -43,7 +43,7 @@ if not services_data:
     raise RuntimeError("FATAL: Could not load service data.")
 
 BACK_COMMAND = "__GO_BACK__"
-SALES_TEAM_EMAIL = "saifahmedn2004@gmail.com"  # <--- Ensure this is correct
+SALES_TEAM_EMAIL = "saifahmedn2004@gmail.com"
 
 class ChatRequest(BaseModel):
     stage: str
@@ -87,7 +87,7 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
             data_source = services_data[main_service][sub_cat][category]
         
         user_details['contact'] = user_details.get('phone', 'N/A')
-        update_lead_details(user_details["email"], user_details) # Ensure user_details is updated in DB
+        update_lead_details(user_details["email"], user_details)
         
         country_info = countries[user_details['country']]
         proposal_costs = prepare_proposal_data(data_source, country_info, user_details['company_size'])
@@ -96,14 +96,12 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         
         output_dir = "proposals"; os.makedirs(output_dir, exist_ok=True)
         
-        # --- CLIENT PROPOSAL PDF GENERATION ---
         project_name_slug = user_details.get('custom_category_name', user_details['category']).replace(' ', '_').replace('/', '_')
+        
         client_pdf_file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_client.pdf"
         client_pdf_path = os.path.join(output_dir, client_pdf_file_name)
-        
         create_proposal_pdf(user_details, proposal_text, proposal_costs, country_info, client_pdf_path)
         
-        # --- SEND EMAIL TO CLIENT ---
         send_email_with_attachment(
             receiver_email=user_details['email'],
             subject=f"Your Personalized Proposal from Infinite Tech for {user_details.get('custom_category_name', user_details['category'])}",
@@ -112,13 +110,12 @@ def generate_and_send_proposal_task(user_details, category, custom_category_name
         )
         print(f"--- Client proposal sent to {user_details['email']} ---")
 
-        # --- NEW SALES LEAD PDF GENERATION ---
         sales_pdf_file_name = f"{user_details['company'].replace(' ', '_')}_{project_name_slug}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_sales_lead.pdf"
         sales_pdf_path = os.path.join(output_dir, sales_pdf_file_name)
         
-        create_sales_lead_pdf(user_details, sales_pdf_path) # <--- Call NEW function
+        # --- MODIFICATION: Pass 'proposal_costs' to the sales lead PDF function ---
+        create_sales_lead_pdf(user_details, proposal_costs, sales_pdf_path)
         
-        # --- SEND EMAIL TO SALES TEAM ---
         sales_subject = f"NEW LEAD: {user_details['company']} - {user_details.get('custom_category_name', user_details['category'])}"
         sales_body = f"""
 Dear Sales Team,
@@ -136,13 +133,12 @@ Infinite Tech AI Assistant
             receiver_email=SALES_TEAM_EMAIL,
             subject=sales_subject,
             body=sales_body.strip(),
-            attachment_path=sales_pdf_path # <--- Attach the NEW sales PDF
+            attachment_path=sales_pdf_path
         )
         print(f"--- Sales team notified at {SALES_TEAM_EMAIL} with lead summary PDF ---")
 
     except Exception as e:
         print(f"--- BACKGROUND TASK FAILED: ERROR in background proposal task: {e} ---")
-
     finally:
         sys.stdout.flush()
 
@@ -182,17 +178,54 @@ async def handle_chat(request: ChatRequest):
         return ChatResponse(next_stage="initial_choice", bot_message=f"Of course, {user_details['name']}! Let's start a new proposal.", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
     if stage in ["general_chat", "final_generation"] and any(p in user_input_lower for p in ['connect', 'talk to']): return ChatResponse(next_stage='general_chat', bot_message="Of course. You can reach our team at **sales@infinitecard.in**.", user_details=user_details)
     if stage not in ['ended', 'general_chat', 'final_generation', 'get_name']: user_details['stage_history'].append(stage)
+    
     if stage == "get_name":
         user_details['name'] = user_input
         return ChatResponse(next_stage="initial_choice", bot_message=f"Welcome, {user_input}! How can I help?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Explore Products or Services", "Looking for a Job"]})
+    
     elif stage == "initial_choice":
-        if user_input == "Explore Products or Services": return ChatResponse(next_stage="get_email", bot_message="Great! What is your email address?", user_details=user_details)
-        elif user_input == "Looking for a Job": return ChatResponse(next_stage="job_application", bot_message="You can reach our HR team at `partha@infinitetechai.com` or upload your CV below.", user_details=user_details, ui_elements={"type": "file_upload"})
+        if user_input == "Explore Products or Services": 
+            return ChatResponse(next_stage="get_email", bot_message="Great! What is your email address?", user_details=user_details)
+        
+        elif user_input == "Looking for a Job":
+            if not user_details.get('email'):
+                return ChatResponse(next_stage="get_email_for_job", bot_message="Certainly. To proceed with a job application, please provide your email address first.", user_details=user_details)
+            
+            return ChatResponse(
+                next_stage="job_application", 
+                bot_message="You can reach our HR team at `partha@infinitetechai.com` or upload your CV below.", 
+                user_details=user_details, 
+                ui_elements={
+                    "type": "file_upload",
+                    "upload_to": "/upload-resume",
+                    "user_email": user_details['email']
+                }
+            )
+
+    elif stage == "get_email_for_job":
+        try:
+            valid = validate_email(user_input, check_deliverability=False)
+            user_details['email'] = valid.email
+            save_lead(user_details)
+            return ChatResponse(
+                next_stage="job_application", 
+                bot_message="Thank you. Please upload your CV below.", 
+                user_details=user_details, 
+                ui_elements={
+                    "type": "file_upload",
+                    "upload_to": "/upload-resume",
+                    "user_email": user_details['email']
+                }
+            )
+        except EmailNotValidError:
+            return ChatResponse(next_stage="get_email_for_job", bot_message="That email seems invalid. Please try again.", user_details=user_details)
+    
     elif stage == "get_email":
         try:
             valid = validate_email(user_input, check_deliverability=False); user_details['email'] = valid.email
             return ChatResponse(next_stage="get_phone", bot_message="Thank you. Please select your country and enter your phone number.", user_details=user_details, ui_elements={"type": "form", "form_type": "phone", "options": list(countries.keys())})
         except EmailNotValidError: return ChatResponse(next_stage="get_email", bot_message="That email seems invalid. Please try again.", user_details=user_details)
+    
     elif stage == "get_phone":
         try:
             country, phone_num = user_input.split(":", 1); country_info = countries[country]
@@ -201,15 +234,19 @@ async def handle_chat(request: ChatRequest):
             user_details.update({'phone': phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164), 'country': country}); save_lead(user_details)
             return ChatResponse(next_stage="get_company", bot_message="Perfect. What is your company's name?", user_details=user_details)
         except Exception: return ChatResponse(next_stage="get_phone", bot_message="That phone number seems invalid. Please try again.", user_details=user_details, ui_elements={"type": "form", "form_type": "phone", "options": list(countries.keys())})
+    
     elif stage == "get_company":
         user_details['company'] = user_input
         return ChatResponse(next_stage="get_company_size", bot_message="Got it. What's the size of your company?", user_details=user_details, ui_elements={"type": "dropdown", "options": ["0-10", "10-100", "100-500", "500+"]})
+    
     elif stage == "get_company_size":
         user_details['company_size'] = user_input; country_info = countries[user_details['country']]
         return ChatResponse(next_stage="get_budget", bot_message=f"Thank you. What's your approximate budget in {country_info['currency_code']}?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": generate_local_budget_options(country_info)})
+    
     elif stage == "get_budget":
         user_details['budget'] = user_input
         return ChatResponse(next_stage="get_main_service", bot_message="Understood. Which of our main services are you interested in?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": main_services})
+    
     elif stage == "get_main_service":
         user_details['main_service'] = user_input
         if user_input == "App Development": return ChatResponse(next_stage="get_sub_category", bot_message="Great. Please select the category that best fits your app idea.", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": list(app_sub_category_definitions.keys())})
@@ -217,28 +254,25 @@ async def handle_chat(request: ChatRequest):
         else:
             options = list(services_data.get(user_input, {}).get('_default', {}).keys()) + ["Others"]
             return ChatResponse(next_stage="get_specific_service", bot_message=f"Excellent. Which specific type of {user_input} do you need?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "cards", "options": options})
+    
     elif stage == "get_sub_category":
         user_details['sub_category'] = user_input; main_service = user_details['main_service']
         if main_service == "App Development": options = app_sub_category_definitions.get(user_input, []) + ["Others"]
         else: options = list(services_data.get(main_service, {}).get(user_input, {}).keys()) + ["Others"]
         return ChatResponse(next_stage="get_specific_service", bot_message=f"Perfect. Which specific type of {user_input} are you looking for?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": options})
+    
     elif stage == "get_specific_service":
-        # Check if the user's input is a pre-defined service
         main_service = user_details['main_service']
         sub_cat = user_details.get('sub_category', '_default')
         category_exists = user_input in services_data.get(main_service, {}).get(sub_cat, {})
 
         if category_exists:
-            # --- Path 1: User chose a standard service ---
             user_details['category'] = user_input
-            # Clean up custom name field in case user went back and forth
             user_details.pop('custom_category_name', None) 
             return ChatResponse(next_stage="get_optional_features", bot_message="Perfect. Are there any specific features to add? (Optional, you can skip)", user_details=user_details)
         
         elif user_input == "Others":
-            # --- Path 2: User clicked the "Others" BUTTON ---
             user_details['category'] = "Others"
-            # We DO NOT set the custom name here. We wait for the next step.
             return ChatResponse(
                 next_stage="get_other_service_name", 
                 bot_message="I don't have a standard estimate for Others. Please briefly describe the application you need, and I'll prepare a custom estimate.", 
@@ -246,12 +280,8 @@ async def handle_chat(request: ChatRequest):
             )
         
         else:
-            # --- Path 3: User TYPED a custom service name directly ---
             user_details['category'] = "Others"
-            # HERE, the user's input IS the custom name.
             user_details['custom_category_name'] = user_input 
-            
-            # Now, generate an estimate immediately
             all_examples = [item for sub in services_data.get(main_service, {}).values() for item in sub.values()]
             ai_estimate = estimate_custom_service_cost(user_input, main_service, all_examples)
             if ai_estimate:
@@ -260,11 +290,8 @@ async def handle_chat(request: ChatRequest):
                 return ChatResponse(next_stage="get_specific_service", bot_message="I'm sorry, I couldn't generate an estimate. Please try rephrasing or select an option.", user_details=user_details)
 
     elif stage == "get_other_service_name":
-        # This stage is ONLY reached after the user has clicked the "Others" button.
-        # Therefore, user_input here IS the custom name (e.g., "AI Content Publisher").
-        user_details['custom_category_name'] = user_input # <-- THE CRITICAL FIX
+        user_details['custom_category_name'] = user_input
         main_service = user_details['main_service']
-        
         all_examples = [item for sub in services_data.get(main_service, {}).values() for item in sub.values()]
         ai_estimate = estimate_custom_service_cost(user_input, main_service, all_examples)
         
@@ -279,22 +306,19 @@ async def handle_chat(request: ChatRequest):
         additional_info = f"\n- **Additional Details:** {user_details['description']}" if user_details.get('description') and user_details['description'] != "No additional features requested." else ""
         summary = f"Please confirm your details:\n- **Email:** {user_details['email']}\n- **Phone:** {user_details['phone']}\n- **Company:** {user_details['company']}\n- **Project:** {project_name}{additional_info}\n\nShall I generate and email the full proposal now?"
         return ChatResponse(next_stage="confirm_proposal", bot_message=summary, user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": ["Yes, Send Proposal", "No, I Have Questions"]})
+    
     elif stage == "confirm_proposal":
         if user_input_lower == "yes, send proposal": return ChatResponse(next_stage="final_generation", bot_message="Excellent. Generating your proposal now...", user_details=user_details)
         else: return ChatResponse(next_stage="general_chat", bot_message="No problem. How else can I help?", user_details=user_details)
     
-    # --- BUG FIX FOR JOB APPLICATION FLOW ---
     elif stage in ["general_chat", "final_generation", "job_application"]:
-        # Handle the CV upload confirmation message specifically
         if stage == "job_application" and user_input.startswith("Uploaded:"):
             bot_message = "Thank you for uploading your resume. Our HR team will review it and get in touch if there is a suitable opening. Is there anything else I can help with?"
             return ChatResponse(next_stage="general_chat", bot_message=bot_message, user_details=user_details)
         
-        # Keep the existing logic for other general chat scenarios
         if any(p in user_input_lower for p in ['where is my', 'get the proposal', 'send it']): return ChatResponse(next_stage="general_chat", bot_message="Your proposal was sent to your email. Please check your inbox and spam folder.", user_details=user_details)
         if any(p in user_input_lower for p in ['no', 'bye', 'goodbye']): return ChatResponse(next_stage="ended", bot_message="You're welcome! Have a great day.", user_details=user_details)
         
-        # Fallback to general AI for other questions
         answer = get_general_response(user_input)
         return ChatResponse(next_stage="general_chat", bot_message=answer, user_details=user_details)
     
@@ -304,3 +328,27 @@ async def handle_chat(request: ChatRequest):
 async def create_proposal(request: ProposalRequest, background_tasks: BackgroundTasks):
     background_tasks.add_task(generate_and_send_proposal_task, request.user_details, request.category, request.custom_category_name, request.custom_category_data)
     return {"message": "Proposal generation accepted."}
+
+@app.post("/upload-resume", status_code=200)
+async def handle_resume_upload(email: str = Form(...), resume: UploadFile = File(...)):
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required to associate the resume.")
+
+    output_dir = "resumes"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    filename = "".join(c for c in resume.filename if c.isalnum() or c in ('.', '_')).rstrip()
+    
+    file_path = os.path.join(output_dir, f"{email.replace('@', '_at_')}_{filename}")
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(resume.file, buffer)
+        
+        update_lead_with_resume(email, file_path)
+        
+        return {"message": f"Resume for {email} uploaded successfully.", "file_path": file_path}
+    
+    except Exception as e: 
+        print(f"--- ERROR during resume upload for {email}: {e} ---")
+        raise HTTPException(status_code=500, detail="Could not save the resume file.")

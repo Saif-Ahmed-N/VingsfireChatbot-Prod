@@ -146,13 +146,13 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
         print(f"Error while saving client proposal PDF: {e}")
 
 # --- NEW FUNCTION FOR SALES LEAD PDF ---
-def create_sales_lead_pdf(user_details, output_path):
+def create_sales_lead_pdf(user_details, proposal_costs, output_path): # <-- MODIFIED: Accepts proposal_costs
     pdf = PDF()
-    pdf.pdf_type = 'sales_lead' # Identify PDF type for header
-    setup_fonts(pdf) # Setup fonts
+    pdf.pdf_type = 'sales_lead'
+    setup_fonts(pdf)
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_text_color(0, 0, 0) # Reset text color to black
+    pdf.set_text_color(0, 0, 0)
 
     # --- Main Title and Timestamp ---
     pdf.section_title(f"New Lead Summary: {user_details.get('company', 'N/A')}")
@@ -161,15 +161,12 @@ def create_sales_lead_pdf(user_details, output_path):
     pdf.cell(0, 6, f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}", ln=True, align='L')
     pdf.ln(8)
 
-    # --- Structured Two-Column Layout ---
     def add_detail_row(label, value):
-        """Helper function to create a clean key-value row."""
         pdf.set_font("DejaVu", "B", 11)
         pdf.cell(50, 8, label, 0, 0, 'L')
         pdf.set_font("DejaVu", "", 11)
-        # Use multi_cell for the value to allow text wrapping
         pdf.multi_cell(0, 8, value, 0, 'L')
-        pdf.ln(1) # Add a tiny space between rows
+        pdf.ln(1)
 
     # --- Client & Company Information Section ---
     pdf.section_title("Client & Company Information")
@@ -177,6 +174,7 @@ def create_sales_lead_pdf(user_details, output_path):
     add_detail_row("Company Name:", user_details.get('company', 'N/A'))
     add_detail_row("Email Address:", user_details.get('email', 'N/A'))
     add_detail_row("Phone Number:", user_details.get('phone', 'N/A'))
+    pdf.ln(2)
     add_detail_row("Company Size:", user_details.get('company_size', 'N/A'))
     add_detail_row("Country:", user_details.get('country', 'N/A'))
     pdf.ln(8)
@@ -188,19 +186,21 @@ def create_sales_lead_pdf(user_details, output_path):
     if sub_category_display and sub_category_display != '_default':
         main_service_display += f" > {sub_category_display}"
     
-    # For sales, always show the custom name if it exists, as it's more specific.
     project_name_sales = user_details.get('custom_category_name') or user_details.get('category', 'N/A')
 
     add_detail_row("Service Category:", main_service_display)
     add_detail_row("Specific Request:", project_name_sales)
     add_detail_row("Stated Budget:", user_details.get('budget', 'N/A'))
+    
+    # --- NEWLY ADDED LINE ---
+    add_detail_row("Estimated Total:", proposal_costs.get('final_total_str', 'N/A'))
     pdf.ln(8)
     
     # --- Additional Client Notes Section ---
     pdf.section_title("Additional Client Notes")
     pdf.set_font("DejaVu", "", 11)
     description = user_details.get('description', 'No additional features requested.')
-    pdf.multi_cell(0, 7, f'"{description}"', border=0, align='L') # Put notes in quotes
+    pdf.multi_cell(0, 7, f'"{description}"', border=0, align='L')
     pdf.ln(5)
 
     try:
