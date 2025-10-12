@@ -223,20 +223,56 @@ async def handle_chat(request: ChatRequest):
         else: options = list(services_data.get(main_service, {}).get(user_input, {}).keys()) + ["Others"]
         return ChatResponse(next_stage="get_specific_service", bot_message=f"Perfect. Which specific type of {user_input} are you looking for?", user_details=user_details, ui_elements={"type": "buttons", "display_style": "pills", "options": options})
     elif stage == "get_specific_service":
-        user_details['category'] = user_input
-        main_service, sub_cat = user_details['main_service'], user_details.get('sub_category', '_default')
-        category_exists = user_input in services_data.get(main_service, {}).get(sub_cat, {})
-        if user_input == "Others" or not category_exists:
-            if not category_exists: user_details.update({'custom_category_name': user_input, 'category': "Custom Service"})
-            return ChatResponse(next_stage="get_other_service_name", bot_message=f"I don't have a standard estimate for **{user_input}**. Please briefly describe the application you need, and I'll prepare a custom estimate.", user_details=user_details)
-        else: return ChatResponse(next_stage="get_optional_features", bot_message="Perfect. Are there any specific features to add? (Optional, you can skip)", user_details=user_details)
-    elif stage == "get_other_service_name":
-        if 'custom_category_name' not in user_details: user_details['custom_category_name'] = user_input
+        # Check if the user's input is a pre-defined service
         main_service = user_details['main_service']
+        sub_cat = user_details.get('sub_category', '_default')
+        category_exists = user_input in services_data.get(main_service, {}).get(sub_cat, {})
+
+        if category_exists:
+            # --- Path 1: User chose a standard service ---
+            user_details['category'] = user_input
+            # Clean up custom name field in case user went back and forth
+            user_details.pop('custom_category_name', None) 
+            return ChatResponse(next_stage="get_optional_features", bot_message="Perfect. Are there any specific features to add? (Optional, you can skip)", user_details=user_details)
+        
+        elif user_input == "Others":
+            # --- Path 2: User clicked the "Others" BUTTON ---
+            user_details['category'] = "Others"
+            # We DO NOT set the custom name here. We wait for the next step.
+            return ChatResponse(
+                next_stage="get_other_service_name", 
+                bot_message="I don't have a standard estimate for Others. Please briefly describe the application you need, and I'll prepare a custom estimate.", 
+                user_details=user_details
+            )
+        
+        else:
+            # --- Path 3: User TYPED a custom service name directly ---
+            user_details['category'] = "Others"
+            # HERE, the user's input IS the custom name.
+            user_details['custom_category_name'] = user_input 
+            
+            # Now, generate an estimate immediately
+            all_examples = [item for sub in services_data.get(main_service, {}).values() for item in sub.values()]
+            ai_estimate = estimate_custom_service_cost(user_input, main_service, all_examples)
+            if ai_estimate:
+                return ChatResponse(next_stage="get_optional_features", bot_message="I've prepared a preliminary estimate for that. Any other specific features to add? (Optional)", user_details=user_details, ui_elements={"type": "store_data", "data": ai_estimate})
+            else:
+                return ChatResponse(next_stage="get_specific_service", bot_message="I'm sorry, I couldn't generate an estimate. Please try rephrasing or select an option.", user_details=user_details)
+
+    elif stage == "get_other_service_name":
+        # This stage is ONLY reached after the user has clicked the "Others" button.
+        # Therefore, user_input here IS the custom name (e.g., "AI Content Publisher").
+        user_details['custom_category_name'] = user_input # <-- THE CRITICAL FIX
+        main_service = user_details['main_service']
+        
         all_examples = [item for sub in services_data.get(main_service, {}).values() for item in sub.values()]
-        ai_estimate = estimate_custom_service_cost(user_details['custom_category_name'], main_service, all_examples)
-        if ai_estimate: return ChatResponse(next_stage="get_optional_features", bot_message="I've prepared a preliminary estimate. Any other specific features to add? (Optional)", user_details=user_details, ui_elements={"type": "store_data", "data": ai_estimate})
-        else: return ChatResponse(next_stage="get_specific_service", bot_message="I'm sorry, I couldn't generate an estimate. Please try rephrasing or select an option.", user_details=user_details)
+        ai_estimate = estimate_custom_service_cost(user_input, main_service, all_examples)
+        
+        if ai_estimate:
+            return ChatResponse(next_stage="get_optional_features", bot_message="I've prepared a preliminary estimate based on your description. Any other specific features to add? (Optional)", user_details=user_details, ui_elements={"type": "store_data", "data": ai_estimate})
+        else:
+            return ChatResponse(next_stage="get_specific_service", bot_message="I'm sorry, I couldn't generate an estimate. Please try rephrasing or select an option.", user_details=user_details)
+
     elif stage == "get_optional_features":
         user_details['description'] = user_input or "No additional features requested."
         project_name = user_details.get('custom_category_name', user_details.get('category'))
