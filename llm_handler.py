@@ -105,52 +105,56 @@ def generate_descriptive_text(category_data, custom_category_name=None):
         return None
 
 def estimate_custom_service_cost(service_name: str, main_service: str, examples: list):
+    """
+    Uses a powerful few-shot prompt to make the AI estimate costs for a custom service.
+    """
     try:
         api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
             raise ValueError("GROQ_API_KEY environment variable is not set.")
         client = Groq(api_key=api_key)
         
+        # Create a string of examples for the prompt context
         example_text = ""
-        # Provide up to 3 examples for few-shot learning
-        for ex in examples[:3]:
-            # Ensure safe access to fields that might be missing in a given example
+        for ex in examples[:3]: # Use up to 3 relevant examples
             category = ex.get('category', 'N/A')
             avg_cost = ex.get('avg_cost_inr', 'N/A')
-            example_text += f"- Service '{category}' has an average cost of INR {avg_cost}.\n"
+            example_text += f"- Service '{category}' costs around INR {avg_cost}.\n"
 
+        # This is a much more robust and forceful prompt
         prompt = f"""
-        You are an expert cost estimator for a software development company called Vingsfire.
-        Your task is to analyze a new, custom project request and provide a reasonable cost breakdown in INR, formatted as a JSON object.
+You are an expert software project cost estimator for a tech company in India. 
+Your task is to analyze a custom project request and provide a realistic cost breakdown in Indian Rupees (INR). 
+You MUST provide a cost breakdown, even if it is a rough estimate. DO NOT state that you cannot provide an estimate.
 
-        **Context:**
-        - The main service category is: "{main_service}"
-        - Here are some examples of existing services in this category and their costs:
-        {example_text}
+**Context:**
+- The main service category is: "{main_service}"
+- Here are examples of existing services and their costs:
+{example_text}
 
-        **New Custom Project Request:** "{service_name}"
+**New Custom Project Request:** "{service_name}"
 
-        **Instructions:**
-        1.  Analyze the user's request: "{service_name}".
-        2.  Based on its complexity relative to the examples, estimate the costs for each component.
-        3.  The `avg_cost_inr` should be the sum of all components *excluding* `optional_addons_cost_inr`.
-        4.  Provide plausible, brief descriptions for `project_overview` and `core_modules`.
-        5.  You MUST respond with a valid JSON object that strictly follows the specified format. Do not include any text outside the JSON object.
+**Instructions:**
+1.  Analyze the complexity of "{service_name}" relative to the examples provided.
+2.  You MUST generate a realistic, NON-ZERO cost in INR for each applicable development phase.
+3.  The `avg_cost_inr` MUST be the sum of all components *except* `optional_addons_cost_inr`.
+4.  Provide a plausible `project_overview` and `core_modules`.
+5.  You MUST ONLY output a valid JSON object. Do not add any other text, explanation, or markdown formatting like ```json.
 
-        **Required JSON Output Format (all costs in INR as integers):**
-        {{
-            "category": "{service_name}",
-            "project_overview": "A brief, one-sentence overview.",
-            "core_modules": "A comma-separated list of 3-4 key modules.",
-            "ui_ux_cost_inr": 0,
-            "frontend_cost_inr": 0,
-            "backend_cost_inr": 0,
-            "qa_cost_inr": 0,
-            "pm_cost_inr": 0,
-            "optional_addons_cost_inr": 0,
-            "avg_cost_inr": 0
-        }}
-        """
+**Required JSON Output Format (all costs in INR as integers):**
+{{
+    "category": "{service_name}",
+    "project_overview": "A brief, one-sentence overview of the project.",
+    "core_modules": "A comma-separated list of 3-4 key modules.",
+    "ui_ux_cost_inr": 0,
+    "frontend_cost_inr": 0,
+    "backend_cost_inr": 0,
+    "qa_cost_inr": 0,
+    "pm_cost_inr": 0,
+    "optional_addons_cost_inr": 0,
+    "avg_cost_inr": 0
+}}
+"""
         chat_completion = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": "You are a cost estimation assistant that only responds in the required JSON format with integer values for costs."},
@@ -162,7 +166,20 @@ def estimate_custom_service_cost(service_name: str, main_service: str, examples:
         )
         
         response_text = chat_completion.choices[0].message.content
-        return json.loads(response_text)
+        
+        # Robustly parse the JSON to prevent errors
+        try:
+            estimated_data = json.loads(response_text)
+            # Final validation
+            if "avg_cost_inr" in estimated_data and "core_modules" in estimated_data:
+                 print(f"--- AI generated a valid cost estimate for '{service_name}' ---")
+                 return estimated_data
+            else:
+                print(f"--- AI response for '{service_name}' had invalid structure ---")
+                return None
+        except json.JSONDecodeError:
+            print(f"--- FAILED to decode AI JSON response for '{service_name}'. Raw response: {response_text} ---")
+            return None
 
     except Exception as e:
         print(f"An error occurred with the AI cost estimator: {e}")

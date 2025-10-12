@@ -83,16 +83,18 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
     pdf.set_font("DejaVu", "B", 11)
     pdf.cell(0, 7, user_details.get('contact', 'N/A'), ln=True)
 
-    # --- FIX: Only one Project row, with custom service in brackets ---
+    # --- FIX: Only one Project row, with CORRECT custom service in brackets ---
     pdf.set_font("DejaVu", "", 11)
     pdf.cell(40, 7, "Project:")
     pdf.set_font("DejaVu", "B", 11)
+    
     project_display_name = user_details.get('category', 'N/A')
     custom_name = user_details.get('custom_category_name')
-    if custom_name and project_display_name == "Custom Service": # Check if it's the generic "Custom Service" category
+
+    # This logic now correctly checks if a custom name exists and the category is "Others" or "Custom Service"
+    if custom_name and project_display_name in ["Others", "Custom Service"]:
         project_display_name = f"Others ({custom_name})"
-    elif custom_name and project_display_name == "Others": # If it's explicitly "Others" category
-        project_display_name = f"Others ({custom_name})"
+    
     pdf.cell(0, 7, project_display_name, ln=True)
     pdf.ln(8)
 
