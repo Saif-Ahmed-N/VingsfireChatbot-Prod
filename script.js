@@ -46,13 +46,15 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     let lastMessageElement = null;
 
+    // --- MODIFIED FUNCTION ---
+    // This function now only controls the visibility of the "Previous Step" button in the footer.
     const updateGoBackButton = () => {
         if (chatState.user_details.stage_history && chatState.user_details.stage_history.length > 0) {
+            // If there is history, show the button
             goBackButton.classList.remove('hidden');
-            chatbotHeaderIcon.classList.add('hidden');
         } else {
+            // Otherwise, hide it
             goBackButton.classList.add('hidden');
-            chatbotHeaderIcon.classList.remove('hidden');
         }
     };
 
@@ -211,7 +213,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 container.remove();
                 break;
             case 'file_upload':
-                // *** CHANGE 1: Pass the 'elements' object to the function ***
                 renderFileUpload(container, elements);
                 break;
         }
@@ -273,7 +274,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         container.appendChild(form);
     };
 
-    // *** CHANGE 2: Replace the entire renderFileUpload function ***
     const renderFileUpload = (container, uiData) => {
         container.className = 'bg-white p-4 rounded-lg shadow-md mb-4 border border-gray-200';
         container.innerHTML = `
