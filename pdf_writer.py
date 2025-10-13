@@ -156,7 +156,7 @@ def create_sales_lead_pdf(user_details, proposal_costs, output_path): # <-- MODI
 
     # --- Main Title and Timestamp ---
     pdf.section_title(f"New Lead Summary: {user_details.get('company', 'N/A')}")
-    pdf.set_font("DejaVu", "I", 10)
+    pdf.set_font("DejaVu", "", 10)
     pdf.set_text_color(128)
     pdf.cell(0, 6, f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}", ln=True, align='L')
     pdf.ln(8)
