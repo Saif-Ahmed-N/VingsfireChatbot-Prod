@@ -146,7 +146,7 @@ def create_proposal_pdf(user_details, proposal_text, proposal_costs, country_inf
         print(f"Error while saving client proposal PDF: {e}")
 
 # --- NEW FUNCTION FOR SALES LEAD PDF ---
-def create_sales_lead_pdf(user_details, proposal_costs, output_path): # <-- MODIFIED: Accepts proposal_costs
+def create_sales_lead_pdf(user_details, proposal_costs, output_path):
     pdf = PDF()
     pdf.pdf_type = 'sales_lead'
     setup_fonts(pdf)
@@ -156,9 +156,15 @@ def create_sales_lead_pdf(user_details, proposal_costs, output_path): # <-- MODI
 
     # --- Main Title and Timestamp ---
     pdf.section_title(f"New Lead Summary: {user_details.get('company', 'N/A')}")
+    
+    # *** CHANGE 1: Ensure font is set to regular ("") instead of italic ("I") ***
     pdf.set_font("DejaVu", "", 10)
+    
     pdf.set_text_color(128)
-    pdf.cell(0, 6, f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}", ln=True, align='L')
+    
+    # *** CHANGE 2: Remove the time from the date format ***
+    pdf.cell(0, 6, f"Generated on: {datetime.now().strftime('%B %d, %Y')}", ln=True, align='L')
+    
     pdf.ln(8)
 
     def add_detail_row(label, value):
@@ -192,7 +198,6 @@ def create_sales_lead_pdf(user_details, proposal_costs, output_path): # <-- MODI
     add_detail_row("Specific Request:", project_name_sales)
     add_detail_row("Stated Budget:", user_details.get('budget', 'N/A'))
     
-    # --- NEWLY ADDED LINE ---
     add_detail_row("Estimated Total:", proposal_costs.get('final_total_str', 'N/A'))
     pdf.ln(8)
     
