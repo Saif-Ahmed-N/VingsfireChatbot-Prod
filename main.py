@@ -43,7 +43,7 @@ if not services_data:
     raise RuntimeError("FATAL: Could not load service data.")
 
 BACK_COMMAND = "__GO_BACK__"
-SALES_TEAM_EMAIL = "saifahmedn2004@gmail.com"
+SALES_TEAM_EMAIL = "partha@infinitetechai.com"
 
 class ChatRequest(BaseModel):
     stage: str
