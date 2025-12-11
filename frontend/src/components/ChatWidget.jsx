@@ -4,7 +4,7 @@ import { MessageSquare, X, Send, Paperclip, ChevronLeft, Minimize2, CheckCircle2
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- CONFIGURATION ---
-const API_URL = "https://vingsfire-chatbot-frontend.onrender.com";
+const API_URL = "https://vingsfirechatbot-prod.onrender.com";
 const LOGO_PATH = "/logo.png"; 
 
 // --- WELCOME FEATURES ---
