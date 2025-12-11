@@ -1,4 +1,4 @@
-.env
+backend/.env
 __pycache__/
 .venv/
 *.exe
@@ -7,3 +7,7 @@ tailwindcss.exe
 node_modules/
 npm-debug.log
 package-lock.json
+info.txt
+backend/venv/
+backend/proposals/
+backend/resumes/

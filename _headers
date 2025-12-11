@@ -1,2 +1,0 @@
-/*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src https://vingsfirechatbot-api.onrender.com;
