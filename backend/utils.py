@@ -4,23 +4,18 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import os
-import socket
 
 def send_email_with_attachment(receiver_email, subject, body, attachment_path=None):
-    # Load variables
     sender_email = os.getenv("EMAIL_ADDRESS")
     sender_password = os.getenv("EMAIL_PASSWORD")
+    smtp_server = os.getenv("EMAIL_HOST", "smtp.gmail.com")
     
-    # FIX: Try using googlemail.com alias if gmail.com fails
-    smtp_server = os.getenv("EMAIL_HOST", "smtp.googlemail.com") 
-    
-    # Ensure port is an integer
     try:
-        smtp_port = int(os.getenv("EMAIL_PORT", 587))
+        smtp_port = int(os.getenv("EMAIL_PORT", 465))
     except ValueError:
-        smtp_port = 587
+        smtp_port = 465
 
-    print(f"📧 DEBUG: Connecting to {smtp_server}:{smtp_port} for {receiver_email}...")
+    print(f"📧 DEBUG: Connecting to {smtp_server}:{smtp_port}...")
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -44,13 +39,20 @@ def send_email_with_attachment(receiver_email, subject, body, attachment_path=No
             print(f"⚠️ Error attaching file: {e}")
 
     try:
-        # Establish Connection
-        server = smtplib.SMTP(smtp_server, smtp_port, timeout=30) # Added timeout
-        server.set_debuglevel(1) 
-        server.starttls() 
+        # --- THE HYBRID FIX ---
+        if smtp_port == 465:
+            # Use SSL directly (No starttls needed)
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=30)
+        else:
+            # Use Standard + STARTTLS
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
+            server.set_debuglevel(1)
+            server.starttls()
+
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, receiver_email, msg.as_string())
         server.quit()
+        
         print(f"✅ Email sent successfully to {receiver_email}")
         return True
     except Exception as e:
