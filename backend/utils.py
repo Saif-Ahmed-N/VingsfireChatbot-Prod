@@ -1,47 +1,67 @@
 import os
-import resend
+import requests
 import base64
 
 def send_email_with_attachment(receiver_email, subject, body, attachment_path=None):
-    api_key = os.getenv("RESEND_API_KEY")
-    if not api_key:
-        print("❌ Error: RESEND_API_KEY is missing.")
+    # Load keys
+    api_key = os.getenv("MAILJET_API_KEY")
+    api_secret = os.getenv("MAILJET_SECRET_KEY")
+    sender_email = os.getenv("EMAIL_ADDRESS") # Your verified Mailjet email
+
+    if not api_key or not api_secret:
+        print("❌ Error: Mailjet Keys are missing.")
         return False
 
-    resend.api_key = api_key
+    url = "https://api.mailjet.com/v3.1/send"
+    auth = (api_key, api_secret)
 
-    # For testing, you MUST use this email until you verify your own domain
-    sender_email = "onboarding@resend.dev" 
-    
-    # Prepare attachment params
+    # Base64 encode the attachment
     attachments = []
     if attachment_path and os.path.exists(attachment_path):
         try:
             with open(attachment_path, "rb") as f:
-                file_data = list(f.read()) # Resend expects a list of integers (bytes)
+                encoded_file = base64.b64encode(f.read()).decode('utf-8')
             
             attachments.append({
-                "filename": os.path.basename(attachment_path),
-                "content": file_data
+                "ContentType": "application/pdf",
+                "Filename": os.path.basename(attachment_path),
+                "Base64Content": encoded_file
             })
         except Exception as e:
             print(f"⚠️ Error preparing attachment: {e}")
 
+    # Mailjet JSON Payload
+    data = {
+        "Messages": [
+            {
+                "From": {
+                    "Email": sender_email,
+                    "Name": "Infinite Tech AI"
+                },
+                "To": [
+                    {
+                        "Email": receiver_email
+                    }
+                ],
+                "Subject": subject,
+                "HTMLPart": f"<p>{body.replace(chr(10), '<br>')}</p>",
+                "Attachments": attachments
+            }
+        ]
+    }
+
     try:
-        print(f"📧 Sending email via Resend API to {receiver_email}...")
+        print(f"📧 Sending email via Mailjet API to {receiver_email}...")
+        response = requests.post(url, auth=auth, json=data)
         
-        params = {
-            "from": f"Infinite Tech AI <{sender_email}>",
-            "to": [receiver_email],
-            "subject": subject,
-            "html": f"<p>{body.replace(chr(10), '<br>')}</p>",
-            "attachments": attachments
-        }
-
-        r = resend.Emails.send(params)
-        print(f"✅ Email sent successfully! ID: {r.get('id')}")
-        return True
-
+        if response.status_code == 200:
+            print(f"✅ Email sent successfully! Response: {response.json()['Messages'][0]['Status']}")
+            return True
+        else:
+            print(f"❌ Failed to send email. Status: {response.status_code}")
+            print(f"Error Response: {response.text}")
+            return False
+            
     except Exception as e:
-        print(f"❌ Failed to send email via Resend: {e}")
+        print(f"❌ API Request Failed: {e}")
         return False
