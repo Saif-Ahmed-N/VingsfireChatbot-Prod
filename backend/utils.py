@@ -1,69 +1,54 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 import os
-import socket
-
-# --- THE FIX: Force IPv4 to prevent Network Unreachable / Hanging errors ---
-# This tells Python: "If you see an IPv6 address for Gmail, ignore it. Only use IPv4."
-old_getaddrinfo = socket.getaddrinfo
-def new_getaddrinfo(*args, **kwargs):
-    responses = old_getaddrinfo(*args, **kwargs)
-    return [response for response in responses if response[0] == socket.AF_INET]
-socket.getaddrinfo = new_getaddrinfo
-# --------------------------------------------------------------------------
+import requests
+import base64
 
 def send_email_with_attachment(receiver_email, subject, body, attachment_path=None):
+    api_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("EMAIL_ADDRESS")
-    sender_password = os.getenv("EMAIL_PASSWORD")
-    smtp_server = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    sender_name = "Infinite Tech AI" # You can customize this
+
+    url = "https://api.brevo.com/v3/smtp/email"
     
-    try:
-        # Default to 587 (TLS) as it's most reliable with IPv4
-        smtp_port = int(os.getenv("EMAIL_PORT", 587))
-    except ValueError:
-        smtp_port = 587
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
+    }
 
-    print(f"📧 DEBUG: Connecting to {smtp_server}:{smtp_port} (IPv4 Forced)...")
+    # Prepare the email data
+    payload = {
+        "sender": {"name": sender_name, "email": sender_email},
+        "to": [{"email": receiver_email}],
+        "subject": subject,
+        "htmlContent": f"<p>{body.replace(chr(10), '<br>')}</p>" # Convert newlines to HTML breaks
+    }
 
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
+    # Handle Attachment
     if attachment_path and os.path.exists(attachment_path):
         try:
-            with open(attachment_path, "rb") as attachment:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(attachment.read())
+            with open(attachment_path, "rb") as file:
+                encoded_string = base64.b64encode(file.read()).decode()
             
-            encoders.encode_base64(part)
-            part.add_header(
-                "Content-Disposition",
-                f"attachment; filename= {os.path.basename(attachment_path)}",
-            )
-            msg.attach(part)
+            payload["attachment"] = [
+                {
+                    "content": encoded_string,
+                    "name": os.path.basename(attachment_path)
+                }
+            ]
         except Exception as e:
-            print(f"⚠️ Error attaching file: {e}")
+            print(f"⚠️ Error preparing attachment: {e}")
 
     try:
-        # Connect using Standard SMTP (IPv4 enforced)
-        server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
-        server.set_debuglevel(1) 
+        print(f"📧 Sending email via Brevo API to {receiver_email}...")
+        response = requests.post(url, json=payload, headers=headers)
         
-        # Start TLS (Secure Handshake)
-        server.starttls()
-        
-        # Login and Send
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, receiver_email, msg.as_string())
-        server.quit()
-        
-        print(f"✅ Email sent successfully to {receiver_email}")
-        return True
+        if response.status_code == 201:
+            print(f"✅ Email sent successfully! Message ID: {response.json().get('messageId')}")
+            return True
+        else:
+            print(f"❌ Failed to send email. Status: {response.status_code}")
+            print(f"Error Response: {response.text}")
+            return False
     except Exception as e:
-        print(f"❌ Failed to send email: {e}")
+        print(f"❌ API Request Failed: {e}")
         return False
