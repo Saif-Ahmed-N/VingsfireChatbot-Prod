@@ -4,7 +4,7 @@ import { MessageSquare, X, Send, Paperclip, ChevronLeft, Minimize2, CheckCircle2
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- CONFIGURATION ---
-const API_URL = "http://127.0.0.1:8000"; 
+const API_URL = "https://infinite-tech-backend.onrender.com";
 const LOGO_PATH = "/logo.png"; 
 
 // --- WELCOME FEATURES ---
