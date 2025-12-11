@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-gunicorn
 pydantic
 phonenumbers
 email-validator
@@ -11,6 +10,5 @@ fpdf2
 pymongo
 python-dotenv
 certifi
-sendgrid
 dnspython
 python-multipart
