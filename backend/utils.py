@@ -1,62 +1,47 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 import os
-import socket
-
-# --- CRITICAL FIX: Force IPv4 to prevent Hanging/Network Unreachable ---
-# Render/Docker sometimes hangs on IPv6. This forces it to use IPv4.
-old_getaddrinfo = socket.getaddrinfo
-def new_getaddrinfo(*args, **kwargs):
-    responses = old_getaddrinfo(*args, **kwargs)
-    return [response for response in responses if response[0] == socket.AF_INET]
-socket.getaddrinfo = new_getaddrinfo
-# -----------------------------------------------------------------------
+import resend
+import base64
 
 def send_email_with_attachment(receiver_email, subject, body, attachment_path=None):
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    sender_password = os.getenv("EMAIL_PASSWORD") # Your 16-char App Password
-    smtp_server = "smtp.gmail.com"
-    smtp_port = 465 # SSL Port (Most reliable on Cloud)
+    api_key = os.getenv("RESEND_API_KEY")
+    if not api_key:
+        print("❌ Error: RESEND_API_KEY is missing.")
+        return False
 
-    print(f"📧 DEBUG: Attempting connection to {smtp_server}:{smtp_port} (IPv4 Enforced)...")
+    resend.api_key = api_key
 
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
-    # Attach PDF if it exists
+    # For testing, you MUST use this email until you verify your own domain
+    sender_email = "onboarding@resend.dev" 
+    
+    # Prepare attachment params
+    attachments = []
     if attachment_path and os.path.exists(attachment_path):
         try:
-            with open(attachment_path, "rb") as attachment:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(attachment.read())
+            with open(attachment_path, "rb") as f:
+                file_data = list(f.read()) # Resend expects a list of integers (bytes)
             
-            encoders.encode_base64(part)
-            part.add_header(
-                "Content-Disposition",
-                f"attachment; filename= {os.path.basename(attachment_path)}",
-            )
-            msg.attach(part)
+            attachments.append({
+                "filename": os.path.basename(attachment_path),
+                "content": file_data
+            })
         except Exception as e:
-            print(f"⚠️ Error attaching file: {e}")
+            print(f"⚠️ Error preparing attachment: {e}")
 
     try:
-        # Use SMTP_SSL directly (Skip the STARTTLS handshake that often hangs)
-        server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=20) 
+        print(f"📧 Sending email via Resend API to {receiver_email}...")
         
-        server.set_debuglevel(1) # Show interaction in logs
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, receiver_email, msg.as_string())
-        server.quit()
-        
-        print(f"✅ Email sent successfully to {receiver_email}")
+        params = {
+            "from": f"Infinite Tech AI <{sender_email}>",
+            "to": [receiver_email],
+            "subject": subject,
+            "html": f"<p>{body.replace(chr(10), '<br>')}</p>",
+            "attachments": attachments
+        }
+
+        r = resend.Emails.send(params)
+        print(f"✅ Email sent successfully! ID: {r.get('id')}")
         return True
 
     except Exception as e:
-        print(f"❌ Failed to send email: {e}")
+        print(f"❌ Failed to send email via Resend: {e}")
         return False

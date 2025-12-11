@@ -13,4 +13,4 @@ certifi
 dnspython
 python-multipart
 requests
-yagmail
+resend
