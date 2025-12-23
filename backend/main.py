@@ -23,6 +23,10 @@ from utils import send_email_with_attachment
 
 app = FastAPI(title="Infinite Tech AI Agent", version="3.5.0 (Enterprise)")
 
+@app.get("/")
+async def health_check():
+    return {"status": "awake"}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
