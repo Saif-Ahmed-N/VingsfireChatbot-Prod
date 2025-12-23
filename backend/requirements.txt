@@ -13,4 +13,3 @@ certifi
 dnspython
 python-multipart
 requests
-resend

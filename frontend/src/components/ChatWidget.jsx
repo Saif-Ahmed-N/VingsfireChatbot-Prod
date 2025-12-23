@@ -418,11 +418,14 @@ export default function ChatWidget() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-10 right-10 w-20 h-20 rounded-full shadow-[0_0_30px_rgba(6,182,212,0.6)] flex items-center justify-center z-50 overflow-hidden group"
+            // CHANGED: w-20 h-20 -> w-14 h-14 (Matches WhatsApp Size)
+            // CHANGED: bottom-10 right-10 -> bottom-5 right-5 (Matches WhatsApp Position)
+            className="fixed bottom-5 right-5 w-14 h-14 rounded-full shadow-[0_0_30px_rgba(6,182,212,0.6)] flex items-center justify-center z-50 overflow-hidden group"
             style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #8b5cf6 50%, #ec4899 100%)' }}
           >
             <div className="absolute inset-0 animate-shimmer opacity-50" />
-            <img src={LOGO_PATH} alt="Chat" className="w-12 h-12 relative z-10 animate-float drop-shadow-md" />
+            {/* CHANGED: w-12 h-12 -> w-8 h-8 (Resized inner logo to fit) */}
+            <img src={LOGO_PATH} alt="Chat" className="w-8 h-8 relative z-10 animate-float drop-shadow-md" />
             <div className="absolute inset-0 bg-white/20 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300" />
           </motion.button>
         )}
